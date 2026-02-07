@@ -1,0 +1,97 @@
+body {
+    font-family: 'Vazir', sans-serif;
+    direction: rtl;
+    background-color: #f8f9fa;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.fixed-top {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.card-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.table {
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bg-primary {
+    background-color: #1e3a8a !important;
+}
+
+/* استایل برای سایدبار با قابلیت hover */
+.sidebar-nav {
+    width: 50px; /* عرض اولیه (فقط آیکون‌ها) */
+    transition: width 0.3s ease; /* انیمیشن برای تغییر عرض */
+    overflow: hidden; /* جلوگیری از سرریز متن در حالت بسته */
+}
+
+.sidebar-nav:hover {
+    width: 200px; /* عرض کامل هنگام hover */
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.sidebar-item .bi {
+    font-size: 1.5rem; /* اندازه آیکون‌ها */
+}
+
+.sidebar-nav:hover .sidebar-item {
+    justify-content: flex-start !important; /* چیدمان آیکون و متن در حالت باز */
+}
+
+.sidebar-nav:hover .sidebar-item span {
+    display: inline; /* نمایش متن هنگام hover */
+    margin-right: 10px; /* فاصله بین متن و آیکون */
+    white-space: nowrap; /* جلوگیری از شکستن متن */
+}
+
+/* مخفی کردن متن‌ها در حالت پیش‌فرض */
+.sidebar-item span {
+    display: none; /* متن‌ها در حالت عادی مخفی هستند */
+}
+
+/* افزودن متن‌ها به صورت پنهان در HTML با استفاده از ::after */
+#nav-report::after { content: "گزارش روزانه"; }
+#nav-return::after { content: "بازدهی ها"; }
+#nav-portfolio::after { content: "وضعیت پرتفوی"; }
+#nav-commodity::after { content: "کامودیتی ها"; }
+#nav-pharma::after { content: "داشبورد شرکت های دارویی"; }
+#nav-fund::after { content: "صندوق ها"; }

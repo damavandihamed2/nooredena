@@ -1,0 +1,19 @@
+.ag-theme-alpine .ag-header-cell {
+  background-color: rgb(22, 127, 146, 0.5);
+  align-items: center;
+}
+
+.ag-theme-alpine .ag-header-cell .ag-header-cell-label {
+  font-size: 14px;
+  justify-content: center;
+  direction: rtl;
+  padding: 0px !important;
+  overflow: visible;
+  align-items: center;
+}
+
+.ag-row .ag-cell {
+  display: flex;
+  justify-content: center; /* align horizontal */
+  align-items: center;
+}
