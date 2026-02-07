@@ -1,0 +1,158 @@
+from __future__ import annotations
+
+from typing import Optional
+from sqlalchemy import Column, BigInteger, Float, Integer, Numeric, String
+from .base import Base
+
+class SigmaBuysell(Base):
+    __tablename__ = "buysell"
+    __table_args__ = {"schema": "sigma"}
+
+    portfolio_id: Optional[int] = Column(Integer, nullable=False, primary_key=True)
+    asset: Optional[str] = Column(String(150), nullable=True)
+    symbol: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    broker: Optional[str] = Column(String(150), nullable=False, primary_key=True)
+    date: Optional[str] = Column(String(10), nullable=False, primary_key=True)
+    action: Optional[str] = Column(String(150), nullable=False, primary_key=True)
+    type: Optional[str] = Column(String(50), nullable=True)
+    market: Optional[str] = Column(String(50), nullable=True)
+    sector: Optional[str] = Column(String(150), nullable=True)
+    amount: Optional[int] = Column(BigInteger, nullable=True)
+    price: Optional[int] = Column(Numeric, nullable=True)
+    value: Optional[int] = Column(Numeric, nullable=True)
+    gross_financial_liability: Optional[float] = Column(Float, nullable=True)
+    broker_cost: Optional[int] = Column(BigInteger, nullable=True)
+    organization_cost: Optional[int] = Column(BigInteger, nullable=True)
+    tax_cost: Optional[int] = Column(BigInteger, nullable=True)
+    cost: Optional[int] = Column(Numeric, nullable=True)
+    broker_discount: Optional[int] = Column(Integer, nullable=True)
+    organization_discount: Optional[int] = Column(Integer, nullable=True)
+    tax_discount: Optional[int] = Column(Integer, nullable=True)
+    total_discount: Optional[int] = Column(Integer, nullable=True)
+    other_cost: Optional[int] = Column(Integer, nullable=True)
+    net_price: Optional[int] = Column(Numeric, nullable=True)
+    net_value: Optional[int] = Column(BigInteger, nullable=True)
+    net_financial_liability: Optional[float] = Column(Float, nullable=True)
+    total_cost: Optional[int] = Column(BigInteger, nullable=True)
+    net_profit: Optional[int] = Column(BigInteger, nullable=True)
+    gross_profit: Optional[int] = Column(BigInteger, nullable=True)
+    basket: Optional[str] = Column(String(255), nullable=True)
+    interest: Optional[int] = Column(Integer, nullable=True)
+    period_valuation: Optional[int] = Column(Integer, nullable=True)
+
+class SigmaDividend(Base):
+    __tablename__ = "dividend"
+    __table_args__ = {"schema": "sigma"}
+
+    portfolio_id: Optional[int] = Column(Integer, nullable=False, primary_key=True)
+    asset: Optional[str] = Column(String(150), nullable=False, primary_key=True)
+    fiscal_year: Optional[str] = Column(String(10), nullable=False, primary_key=True)
+    meeting_date: Optional[str] = Column(String(10), nullable=True)
+    payment_date: Optional[str] = Column(String(10), nullable=True)
+    date: Optional[str] = Column(String(10), nullable=True)
+    eps: Optional[int] = Column(Integer, nullable=True)
+    dps: Optional[int] = Column(Integer, nullable=True)
+    amount: Optional[int] = Column(BigInteger, nullable=True)
+    value: Optional[int] = Column(BigInteger, nullable=True)
+    value_received: Optional[int] = Column(BigInteger, nullable=True)
+    payment_value: Optional[int] = Column(BigInteger, nullable=True)
+    value_correction: Optional[int] = Column(BigInteger, nullable=True)
+    status: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+
+class SigmaPortfolio(Base):
+    __tablename__ = "portfolio"
+    __table_args__ = {"schema": "sigma"}
+
+    portfolio_id: Optional[int] = Column(Integer, nullable=False, primary_key=True)
+    basket: Optional[str] = Column(String(255), nullable=True)
+    asset: Optional[str] = Column(String(255), nullable=True)
+    symbol: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    market: Optional[str] = Column(String(50), nullable=True)
+    sector: Optional[str] = Column(String(255), nullable=True)
+    type: Optional[str] = Column(String(50), nullable=True)
+    status: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    supervising_broker: Optional[str] = Column(String(155), nullable=False, primary_key=True)
+    amount: Optional[int] = Column(BigInteger, nullable=True)
+    put_option: Optional[int] = Column(BigInteger, nullable=True)
+    due_date: Optional[str] = Column(String(50), nullable=True)
+    interest_rate: Optional[int] = Column(Integer, nullable=True)
+    cost_per_share: Optional[float] = Column(Float, nullable=True)
+    total_cost: Optional[int] = Column(BigInteger, nullable=True)
+    total_cost_ratio: Optional[float] = Column(Float, nullable=True)
+    financial_liability: Optional[int] = Column(BigInteger, nullable=True)
+    break_even_point: Optional[float] = Column(Float, nullable=True)
+    financial_liability_ratio: Optional[float] = Column(Float, nullable=True)
+    final_price: Optional[int] = Column(Integer, nullable=True)
+    commission: Optional[int] = Column(BigInteger, nullable=True)
+    discount: Optional[int] = Column(Integer, nullable=True)
+    gross_value_final_price: Optional[int] = Column(BigInteger, nullable=True)
+    gross_value_final_price_ratio: Optional[float] = Column(Float, nullable=True)
+    gross_profit_final_price: Optional[int] = Column(BigInteger, nullable=True)
+    gross_profit_final_price_percent: Optional[int] = Column(Integer, nullable=True)
+    net_value_final_price: Optional[int] = Column(BigInteger, nullable=True)
+    net_value_final_price_ratio: Optional[float] = Column(Float, nullable=True)
+    net_profit_final_price: Optional[int] = Column(BigInteger, nullable=True)
+    net_profit_final_price_percent: Optional[int] = Column(Integer, nullable=True)
+    last_price: Optional[int] = Column(Integer, nullable=True)
+    gross_value_last_price: Optional[int] = Column(BigInteger, nullable=True)
+    gross_value_last_price_ratio: Optional[float] = Column(Float, nullable=True)
+    gross_profit_last_price: Optional[int] = Column(BigInteger, nullable=True)
+    gross_profit_last_price_percent: Optional[int] = Column(Integer, nullable=True)
+    period_gross_profit_final_price: Optional[int] = Column(BigInteger, nullable=True)
+    end_period_capital: Optional[int] = Column(BigInteger, nullable=True)
+    ownership_percentage: Optional[float] = Column(Float, nullable=True)
+    forecast_eps: Optional[int] = Column(Integer, nullable=True)
+    achieved_eps: Optional[int] = Column(Integer, nullable=True)
+    period: Optional[str] = Column(String(50), nullable=True)
+    pe: Optional[int] = Column(Integer, nullable=True)
+    fiscal_year: Optional[str] = Column(String(50), nullable=True)
+    final_price_change: Optional[int] = Column(Integer, nullable=True)
+    last_price_change: Optional[int] = Column(Integer, nullable=True)
+    date: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+
+class SigmaProfitloss(Base):
+    __tablename__ = "profitloss"
+    __table_args__ = {"schema": "sigma"}
+
+    portfolio_id: Optional[int] = Column(Integer, nullable=False, primary_key=True)
+    asset: Optional[str] = Column(String(150), nullable=False, primary_key=True)
+    basket: Optional[str] = Column(String(255), nullable=True)
+    broker: Optional[str] = Column(String(150), nullable=False, primary_key=True)
+    date: Optional[str] = Column(String(10), nullable=False, primary_key=True)
+    type: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    amount: Optional[int] = Column(BigInteger, nullable=True)
+    price: Optional[int] = Column(Numeric, nullable=True)
+    value: Optional[int] = Column(Numeric, nullable=True)
+    interest: Optional[int] = Column(BigInteger, nullable=True)
+    broker_cost: Optional[int] = Column(BigInteger, nullable=True)
+    organization_cost: Optional[int] = Column(BigInteger, nullable=True)
+    tax_cost: Optional[int] = Column(BigInteger, nullable=True)
+    other_cost: Optional[int] = Column(Integer, nullable=True)
+    cost: Optional[int] = Column(Numeric, nullable=True)
+    total_cost: Optional[int] = Column(BigInteger, nullable=True)
+    broker_discount: Optional[int] = Column(Integer, nullable=True)
+    organization_discount: Optional[int] = Column(Integer, nullable=True)
+    tax_discount: Optional[int] = Column(Integer, nullable=True)
+    total_discount: Optional[int] = Column(Integer, nullable=True)
+    net_price: Optional[int] = Column(Numeric, nullable=True)
+    net_value: Optional[int] = Column(BigInteger, nullable=True)
+    period_valuation: Optional[int] = Column(Integer, nullable=True)
+    option_exercise_cost: Optional[int] = Column(Integer, nullable=True)
+    net_profit: Optional[int] = Column(BigInteger, nullable=True)
+    gross_profit: Optional[int] = Column(BigInteger, nullable=True)
+    net_profit_percent: Optional[int] = Column(Numeric, nullable=True)
+    gross_profit_percent: Optional[int] = Column(Numeric, nullable=True)
+
+class SigmaPutOption(Base):
+    __tablename__ = "put_option"
+    __table_args__ = {"schema": "sigma"}
+
+    portfolio_id: Optional[int] = Column(Integer, nullable=False, primary_key=True)
+    symbol: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    symbol_id: Optional[str] = Column(String(50), nullable=True)
+    source_symbol: Optional[str] = Column(String(50), nullable=True)
+    source_symbol_id: Optional[str] = Column(String(50), nullable=True)
+    maturity_date: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    amount: Optional[int] = Column(BigInteger, nullable=True)
+    strike_price: Optional[int] = Column(Integer, nullable=True)
+    asset_id: Optional[str] = Column(String(50), nullable=True)
