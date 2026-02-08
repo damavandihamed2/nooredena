@@ -38,26 +38,10 @@ fig = make_subplots(rows=2, cols=2,
 
 df = dataframe[dataframe["start_date"] == start_dates]
 
-
 y1_min = min(np.floor(min(df.drop(
     labels=["نفع فعالیت", "تاریخ", "start_date"], axis=1, inplace=False).min()) * 100) / 100, -0.05)
 y1_max = max(np.ceil(max(df.drop(
     labels=["نفع فعالیت", "تاریخ", "start_date"], axis=1, inplace=False).max()) * 100) / 100, 0.05)
-
-# y2_range = [
-#     min(round(float(min(df["نفع فعالیت (منفعلانه)"])) * 1.01),
-#         -round(max(df["نفع فعالیت (منفعلانه)"].abs()) / 4)),
-#     max(round(float(max(df["نفع فعالیت (منفعلانه)"])) * 1.01),
-#         round(max(df["نفع فعالیت (منفعلانه)"].abs()) / 4))
-# ]
-
-# y2_range = [
-#     min(round(float(min(df["نفع فعالیت (منفعلانه)"])) * 1.01),
-#         -round(max(df["نفع فعالیت (منفعلانه)"].abs()) / 4)),
-#     max(round(float(max(df["نفع فعالیت (منفعلانه)"])) * 1.01),
-#         round(max(df["نفع فعالیت (منفعلانه)"].abs()) / 4))
-# ]
-
 
 y1_range = [y1_min,
             y1_max]
@@ -65,18 +49,11 @@ y1_range = [y1_min,
 y2_range = [np.ceil(max(df["نفع فعالیت"]) * 1.01),
             np.floor(min(df["نفع فعالیت"]) * 1.01)]
 
-
 if (y1_min * (-1) * y2_range[1]) / (y2_range[0] * (-1)) > y1_max:
     y1_range = [y1_min * 100, ((y1_min * (-1) * y2_range[1]) / (y2_range[0] * (-1))) * 100]
 else:
     y1_range = [(((y1_max * (-1) * y2_range[0]) / y2_range[1]) * (-1)) * 100, y1_max * 100]
 y_range.append({"y1_range": y1_range, "y2_range": y2_range})
-
-# color = ["p" if df["نفع فعالیت"].iloc[i] > 0 else "n" for i in range(len(df))]
-# fig_chart_1 = px.line(df, x="تاریخ", y=["بازدهی فعالیت", "بازدهی عدم فعالیت", "بازدهی شاخص کل", "بازدهی شاخص هم وزن",
-#                                        "بازدهی شاخص سرمایه گذاری ها", "بازدهی شاخص 30 شرکت بزرگ"],
-#                      color_discrete_sequence=["#00ff00", "#ff0000", "#ffff00", "#0000ff", "#000000", "#ff00ff"]
-#                      )
 
 fig_line_1 = go.Scatter(x=df["تاریخ"], y=df["بازدهی فعالیت"]*100, name="فعالیت",
                         line={"color": "#00ff00", "width": 5, "dash": "solid"})
@@ -105,12 +82,6 @@ for i in range(1, len(df_area_1) - 1):
 df_area_1 = pd.concat([df_area_1, df_area_new_1], axis=0)
 df_area_1.sort_values(by="تاریخ", inplace=True, ignore_index=True)
 
-# fig_chart_2 = go.Scatter(x=df["تاریخ"], y=df["نفع فعالیت (منفعلانه)"], name="نفع فعالیت (منفعلانه)",
-#                          # text=df["نفع فعالیت (منفعلانه)"].astype("str").values.tolist(),
-#                          # texttemplate="<b>{text:,.0f}<b>", textfont={"size": 12},
-#                          fill="tozeroy", fillcolor="rgba(150, 114, 44, 0.35)",
-#                          mode="none", legendgroup="نفع فعالیت (منفعلانه)"
-#                          )
 
 df["بازدهی فعالیت"] = (round(100 * df["بازدهی فعالیت"], ndigits=1)).astype("str")
 df["بازدهی عدم فعالیت"] = round(100 * df["بازدهی عدم فعالیت"], ndigits=1).astype("str")
@@ -248,11 +219,11 @@ fig.update_xaxes(tickfont=dict(family="B Nazanin", size=18), calendar="jalali", 
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", ticksuffix="% ", showgrid=False, zeroline=True, zerolinewidth=4, secondary_y=False,
                  # range=y_range[0]["y1_range"],
-                 range=[-20, 60])
+                 range=[-40, 90])
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", secondary_y=True,
                  # range=y_range[0]["y2_range"],
-                 range=[-1700, 5000])
+                 range=[-1800, 4000])
 fig.update_layout(legend={"x": 0.95, "y": 1})
 fig.update_layout(
     template="gridon",
