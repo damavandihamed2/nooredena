@@ -3,6 +3,57 @@ import dash_mantine_components as dmc
 import dash_bootstrap_components as dbc
 from dash import html, dcc
 
+from board_meeting_report import weekly_report_data
+
+
+drop_down_style = {
+    "components": {
+        "Select": {
+            "styles": {
+                "root": {
+                    "height": "100%",
+                    'font-family': 'B Nazanin',
+                    "direction": "rtl",
+                },
+                "input": {
+                    "height": "100%",
+                    'font-family': 'B Nazanin',
+                    'font-size': '16px',
+                    'font-weight': 'bold',
+                    "direction": "rtl",
+                },
+                "option": {
+                    'font-family': 'B Nazanin',
+                    'font-size': '16px',
+                    "direction": "rtl",
+                }
+            }
+        }
+    }
+}
+
+
+drop_down_style_trades = {
+    "components": {
+        "TextInput": {
+            "styles": {
+                "root": {
+                    "height": "100%",
+                    'font-family': 'B Nazanin',
+                    'font-size': '14px',
+                    "direction": "rtl",
+                },
+                "input": {
+                    "height": "100%",
+                    'font-family': 'B Nazanin',
+                    'font-size': '14px',
+                    'font-weight': 'bold',
+                    "direction": "rtl",
+                },
+            }
+        }
+    }
+}
 
 
 rows_style = {"condition": "(params.rowIndex % 2 == 0) && (params.node.rowPinned != 'bottom')",
@@ -54,7 +105,7 @@ tab_portfolio = dmc.TabsPanel(
 )
 portfolio_columns = [
         {"headerName": 'درصد سود و زیان', "field": "profitloss_percent", "cellDataType": "number", "flex": 2.5,
-         "valueFormatter": {"function": value_formatter_unified},
+         "valueFormatter": {"function": value_formatter_unified}, "filter": "agNumberColumnFilter",
          "cellStyle": {
              "defaultStyle": {'textAlign': 'center', "font-size": "18px"},
              "styleConditions": [{"condition": "params.value < 0",
@@ -67,23 +118,23 @@ portfolio_columns = [
                                   "style": {"color": "rgb(255, 0, 0)", 'textAlign': 'center', "font-size": "20px"}}]}},
         {"headerName": 'سهم از پرتفوی', "field": "share_of_portfo", "cellDataType": "number", "flex": 2,
          "cellStyle": {'textAlign': 'center', "font-size": "18px"},
-         "valueFormatter": {"function": value_formatter_unified}},
+         "valueFormatter": {"function": value_formatter_unified}, "filter": "agNumberColumnFilter"},
         {"headerName": 'ارزش (میلیارد ریال)', "field": "value", "cellDataType": "number", "flex": 3,
          "cellStyle": {'textAlign': 'center', "font-size": "20px"},
-         "valueFormatter": {"function": value_formatter_unified}},
+         "valueFormatter": {"function": value_formatter_unified}, "filter": "agNumberColumnFilter"},
         {"headerName": 'قیمت پایانی', "field": "final_price", "cellDataType": "number", "flex": 2,
          "cellStyle": {'textAlign': 'center', "font-size": "20px"},
          "valueFormatter": {"function": value_formatter_unified}},
         {"headerName": 'بهای تمام شده (میلیارد ریال)', "field": "total_cost", "cellDataType": "number", "flex": 3,
          "cellStyle": {'textAlign': 'center', "font-size": "20px"},
-         "valueFormatter": {"function": value_formatter_unified}},
+         "valueFormatter": {"function": value_formatter_unified}, "filter": "agNumberColumnFilter"},
         {"headerName": 'بهای هر سهم', "field": "cost_per_share", "cellDataType": "number", "flex": 2,
          "cellStyle": {'textAlign': 'center', "font-size": "20px"},
          "valueFormatter": {"function": value_formatter_unified}},
         {"headerName": 'تعداد', "field": "amount", "cellDataType": "number", "flex": 2.5,
          "valueFormatter": {"function": value_formatter_unified},
          "cellStyle": {'textAlign': 'center', "font-size": "18px"}},
-        {"headerName": 'سبد', "field": "basket", "flex": 1.5,
+        {"headerName": 'سبد', "field": "basket", "flex": 1.5, "filter": "agTextColumnFilter",
          "cellStyle": {'textAlign': 'center', "font-size": "18px", "font-weight": "bold"}},
         {"headerName": 'درصد مالکیت', "field": "ownership", "cellDataType": "number", "flex": 2,
          "cellStyle": {
@@ -91,9 +142,9 @@ portfolio_columns = [
              "styleConditions": [
                  {"condition": "params.value > 0.0095",
                   "style": {"background-color": "rgba(255, 0, 0, 0.15)", 'textAlign': 'center', "font-size": "18px"}}]},
-         "valueFormatter": {"function": value_formatter_unified}},
+         "valueFormatter": {"function": value_formatter_unified}, "filter": "agNumberColumnFilter"},
         {"headerName": 'نماد', "field": "symbol", "flex": 2,
-         "cellStyle": {'textAlign': 'center', "font-size": "18px", "font-weight": "bold"}},
+         "cellStyle": {'textAlign': 'center', "font-size": "18px", "font-weight": "bold"}, "filter": "agTextColumnFilter"},
         {"headerName": 'ردیف', "field": "index", "flex": 1,
          "cellStyle": {'textAlign': 'center', "font-size": "16px"}}
     ]
@@ -217,7 +268,61 @@ tab_trades = dmc.TabsPanel(
     value="trades",
     children=html.Div(
         children=[
-            dbc.Row(children=[]),
+            dbc.Row(children=[
+                dbc.Col(
+                    children=[
+                        dbc.Row(
+                            [
+                                dbc.Col("تا تاریخ:", width="auto"),
+                                dbc.Col(
+                                    dmc.MantineProvider(
+                                        dmc.TextInput(
+                                            id="date-end-trades",
+                                            debounce=True,
+                                            placeholder="1404/01/01",
+                                            w="50%"
+                                        ),
+                                        theme=drop_down_style_trades
+                                    ),
+                                    width=True
+                                )
+                            ],
+                            className="align-items-center"
+                        ),
+                    ],
+                    style={"height": "100%", 'font-family': 'B Nazanin', "padding": "1px", "direction": "rtl"},
+                    width=2
+                ),
+                dbc.Col(
+                    children=[
+                        dbc.Row(
+                            [
+                                dbc.Col("از تاریخ:", width="auto"),
+                                dbc.Col(
+                                    dmc.MantineProvider(
+                                        dmc.TextInput(
+                                            id="date-start-trades",
+                                            debounce=True,
+                                            placeholder="1404/01/01",
+                                            w="50%"
+                                        ),
+                                        theme=drop_down_style_trades
+                                    ),
+                                    width=True
+                                )
+                            ],
+                            className="align-items-center"
+                        ),
+                    ],
+                    style={"height": "100%", 'font-family': 'B Nazanin', "padding": "0px", "direction": "rtl"},
+                    width=2
+                ),
+                dbc.Col(style={"align": "center", "height": "50px"}, width=8)
+                ],
+                justify="center",
+                align="center",
+                style={"marginTop": 0, "marginBottom": 0, "height": 30}
+            ),
             dmc.Tabs(
                 [dmc.TabsList(children=[dmc.TabsTab("فروش", value="sell"),
                                         dmc.TabsTab("خرید", value="buy")], justify="flex-end"),
@@ -321,6 +426,11 @@ bazdehi_columns_items = [
      "cellStyle": {'textAlign': 'center', "font-size": "18px", "border": "0px solid black"},
      "valueFormatter": {"function": value_formatter_unified}}
 ]
+bazdehi_columns_items_prx = [
+    {"headerName": 'ارقام به میلیارد ریال', "field": "item", "flex": 7,
+     "cellStyle": {'textAlign': 'center', "font-size": "18px", "border": "0px solid black"},
+     "valueFormatter": {"function": value_formatter_unified}}
+]
 
 bazdehi_columns_total = [
     {"headerName": 'درصد تحقق', "field": "achievement_percent", "cellDataType": "number", "flex": 4,
@@ -334,6 +444,12 @@ bazdehi_columns_total = [
      "cellStyle": {"defaultStyle": {'textAlign': 'center', "font-size": "18px", "border": "0px solid black"}},
      "valueFormatter": {"function": value_formatter_unified}},
     ]
+bazdehi_columns_total_prx = [
+    {"headerName": 'تجمیعی', "field": "cumulative", "cellDataType": "number", "flex": 4,
+     "cellStyle": {"defaultStyle": {'textAlign': 'center', "font-size": "18px", "border": "0px solid black"}},
+     "valueFormatter": {"function": value_formatter_unified}},
+]
+
 
 bazdehi_columns_data = {
     "flex": 4,
