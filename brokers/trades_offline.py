@@ -51,9 +51,9 @@ for b in range(len(brokers_list)):
         remain, assets_value = broker.customer_last_remain, broker.assets_value
 
         crsr = powerbi_database.cursor()
-        sql = ("UPDATE [nooredenadb].[brokers].[brokers_balance] SET purchase_upper_bond=?,remain=?,portfolio_value=? "
+        sql = ("UPDATE [nooredenadb].[brokers].[brokers_balance] SET purchase_upper_bound=?,remain=?,portfolio_value=? "
                "WHERE broker_id=? AND portfolio_id=?; IF @@ROWCOUNT=0 BEGIN INSERT INTO "
-               "[nooredenadb].[brokers].[brokers_balance] (portfolio_id,broker_id,purchase_upper_bond,remain,"
+               "[nooredenadb].[brokers].[brokers_balance] (portfolio_id,broker_id,purchase_upper_bound,remain,"
                "portfolio_value,last_month_trades,credit) VALUES (?, ?, ?, ?, ?, ?, ?); END")
         params = (
             purchase_upper_bound, remain, assets_value, brokerId, portfolioId,
@@ -159,15 +159,15 @@ for b in range(len(brokers_list)):
                 trades_all_raw = pd.concat([trades_all_raw, trades], axis=0, ignore_index=True)
 
             assets = pd.DataFrame(broker.assets)
-            purchase_upper_bond = broker.account_info["Credit"] + broker.account_info["Remain"]
+            purchase_upper_bound = broker.account_info["Credit"] + broker.account_info["Remain"]
             assets_value = broker.assets_value
             remain = broker.account_info["Remain"]
             try:
                 crsr = powerbi_database.cursor()
                 sql = (
-                    "UPDATE [nooredenadb].[brokers].[brokers_balance] SET purchase_upper_bond=?,remain=?,portfolio_value=? "
+                    "UPDATE [nooredenadb].[brokers].[brokers_balance] SET purchase_upper_bound=?,remain=?,portfolio_value=? "
                     "WHERE broker_id=? AND portfolio_id=?; IF @@ROWCOUNT=0 BEGIN INSERT INTO "
-                    "[nooredenadb].[brokers].[brokers_balance] (portfolio_id,broker_id,purchase_upper_bond,remain,"
+                    "[nooredenadb].[brokers].[brokers_balance] (portfolio_id,broker_id,purchase_upper_bound,remain,"
                     "portfolio_value,last_month_trades,credit) VALUES (?, ?, ?, ?, ?, ?, ?); END")
                 params = (
                     purchase_upper_bound, remain, assets_value, brokerId, portfolioId,
