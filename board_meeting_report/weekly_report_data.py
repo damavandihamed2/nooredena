@@ -1,13 +1,16 @@
-import warnings
 import pandas as pd
-from typing import Literal
-from utils import database
+import warnings, jdatetime
+from typing import Literal, Union
 
+from utils import database
 
 
 warnings.filterwarnings("ignore")
 db_conn = database.make_connection()
 
+
+def add_one_day_j(date: str):
+    return (jdatetime.datetime.strptime(date, "%Y/%m/%d") + jdatetime.timedelta(days=1)).strftime("%Y/%m/%d")
 
 def get_last_board_meeting_date():
     last_date = pd.read_sql("SELECT MAX(date) AS date FROM [nooredenadb].[extra].[board_meeting_dates]", db_conn)
@@ -31,16 +34,19 @@ def check_basket(l: set):
     else: return "نامشخص"
 
 
-def get_avalhami_data() -> pd.DataFrame:
+def get_avalhami_data(date: str = "last") -> pd.DataFrame:
     query_avalhami_raw = ("SELECT [JalaliDate] date, [SellNAVPerShare] final_price, ISNULL(TEMP.funds_unit, 0) amount, "
                           "ISNULL(TEMP.cost, 0) total_cost FROM [nooredenadb].[extra].[avalhami_nav] LEFT JOIN (SELECT date,"
                           " SUM((CASE WHEN type=1 THEN funds_unit ELSE funds_unit * -1 END)) funds_unit, SUM((CASE WHEN "
                           "type=1 THEN value ELSE cost * -1 END)) AS cost FROM [nooredenadb].[extra].[avalhami_trades] "
                           "GROUP BY date) AS TEMP ON avalhami_nav.JalaliDate=TEMP.date ORDER by avalhami_nav.JalaliDate")
     avalhami_df = pd.read_sql(query_avalhami_raw, db_conn)
+    if date != "last":
+        avalhami_df = avalhami_df[avalhami_df["date"] <= date].reset_index(drop=True)
     avalhami_df = pd.DataFrame([{
         "portfolio_id": 1, "symbol": "حامی اول", "amount": avalhami_df["amount"].sum(),
-        "total_cost": avalhami_df["total_cost"].sum(), "final_price": avalhami_df["final_price"].iloc[-1]}])
+        "total_cost": avalhami_df["total_cost"].sum(), "total_cost_sep": avalhami_df["total_cost"].sum(),
+        "final_price": avalhami_df["final_price"].iloc[-1]}])
     return avalhami_df
 
 
@@ -65,25 +71,43 @@ def get_fix_income_symbols() -> pd.DataFrame:
     return fix_income_symbols
 
 
-def get_portfolio(include_avalhami: bool = True, main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
+def get_portfolio(
+        date: str = "last",
+        include_avalhami: bool = True,
+        main_portfolio: bool = True,
+        prx_portfolio: bool = True
+) -> pd.DataFrame:
+
     if (not main_portfolio) and (not prx_portfolio):
         raise ValueError("both main and prx could not be False!")
-    symbols = get_symbols_data()[["symbol", "total_share"]]
-    query_portfolio = ("SELECT portfolio_temp.portfolio_id, portfolio_temp.symbol, portfolio_temp.amount, "
-                       "portfolio_temp.total_cost, d.close_price AS final_price FROM [nooredenadb].[portfolio]."
-                       "[portfolio_temp] LEFT JOIN (SELECT distinct(symbol), close_price FROM [nooredenadb].[portfolio]."
-                       "[portfolio_daily_report_diff]) d ON portfolio_temp.symbol=d.symbol"
-                       " WHERE portfolio_temp.symbol != 'همراه'")
-    portfolio = pd.read_sql(query_portfolio, db_conn)
-    if include_avalhami:
-        avalhami = get_avalhami_data()
-        portfolio = pd.concat([portfolio, avalhami], axis=0, ignore_index=True)
+
+    if date == "last":
+        query_portfolio = ("SELECT portfolio_temp.portfolio_id, portfolio_temp.symbol, portfolio_temp.amount, "
+                           "portfolio_temp.total_cost, portfolio_temp.total_cost_sep, d.close_price final_price FROM "
+                           "[nooredenadb].[portfolio].[portfolio_temp] LEFT JOIN (SELECT distinct(symbol), close_price "
+                           "FROM [nooredenadb].[portfolio].[portfolio_daily_report_diff]) d "
+                           "ON portfolio_temp.symbol=d.symbol WHERE portfolio_temp.symbol != 'همراه'")
+        date_, time_ = portfolio_date_time()
     else:
-        pass
-    if not main_portfolio:
+        query_portfolio = (f"SELECT portfolio_id, symbol, volume amount, total_cost, total_cost_sep, final_price FROM"
+                           f" nooredenadb.company.portfolio_history WHERE date='{date}'")
+        date_, time_ = date, "12:30"
+
+    portfolio = pd.read_sql(query_portfolio, db_conn)
+    symbols = get_symbols_data()[["symbol", "total_share"]]
+
+    if main_portfolio:
+        if include_avalhami:
+            portfolio = pd.concat([portfolio, get_avalhami_data(date=date)], axis=0, ignore_index=True)
+        if not prx_portfolio:
+            portfolio = portfolio[portfolio["portfolio_id"] == 1].reset_index(drop=True)
+        portfolio.drop(labels=["total_cost_sep"], axis=1, inplace=True)
+
+    if (not main_portfolio) and prx_portfolio:
         portfolio = portfolio[portfolio["portfolio_id"] != 1].reset_index(drop=True)
-    if not prx_portfolio:
-        portfolio = portfolio[portfolio["portfolio_id"] == 1].reset_index(drop=True)
+        portfolio.drop(labels=["total_cost"], axis=1, inplace=True)
+        portfolio.rename({"total_cost_sep": "total_cost"}, axis=1, inplace=True)
+
     portfolio = portfolio.groupby(by=["portfolio_id", "symbol", "final_price"], as_index=False).sum()
     symbols_basket = pd.DataFrame(portfolio.groupby("symbol")["portfolio_id"].apply(set).apply(
         check_basket)).reset_index(drop=False, names="symbol").rename({"portfolio_id": "basket"}, axis=1, inplace=False)
@@ -98,44 +122,54 @@ def get_portfolio(include_avalhami: bool = True, main_portfolio: bool = True, pr
     portfolio["share_of_portfo"] = portfolio["value"] / portfolio["value"].sum()
     portfolio["profitloss"] = portfolio["value"] - portfolio["total_cost"]
     portfolio["profitloss_percent"] = portfolio["profitloss"] / portfolio["total_cost"]
-    date_, time_ = portfolio_date_time()
     portfolio["date"] = date_
     portfolio["time"] = time_
     return portfolio
+
 
 ########################################################################################################################
 
 
 def get_trades(trade_type: Literal[1, 2], start_date: str, end_date: str, fix_exclude:bool = True,
                main_portfolio: bool = True, prx_portfolio: bool = True) -> dict[str: pd.DataFrame]:
+
     if (not main_portfolio) and (not prx_portfolio):
         raise ValueError("both main and prx could not be False!")
+
     cols = ["symbol", "basket", "volume", "mean_price", "value", "share_percent"]
     query_trades = ("SELECT portfolio_id, symbol, is_ros, is_paid_ros, SUM(volume) volume, SUM(value) value, "
-                    "SUM(total_cost) total_cost FROM (SELECT date, type, portfolio_id, symbol, is_ros, is_paid_ros, "
-                    "volume, value, total_cost FROM [nooredenadb].[company].[trades] UNION ALL SELECT date, type, "
-                    "portfolio_id, symbol, is_ros, is_paid_ros, volume, value, total_cost FROM [nooredenadb].[brokers]"
-                    ".[trades_last] WHERE date > (SELECT MAX(date) as date FROM [nooredenadb].[company].[trades])) TEMP"
-                    f" WHERE type = {trade_type} AND date >= '{start_date}' AND date <= '{end_date}' "
+                    "SUM(total_cost) total_cost, SUM(total_cost_sep) total_cost_sep FROM (SELECT date, type, "
+                    "portfolio_id, symbol, is_ros, is_paid_ros, volume, value, total_cost, total_cost_sep FROM "
+                    "[nooredenadb].[company].[trades] UNION ALL SELECT date, type, portfolio_id, symbol, is_ros, "
+                    f"is_paid_ros, volume, value, total_cost, total_cost_sep FROM [nooredenadb].[brokers].[trades_last]"
+                    f" WHERE date > (SELECT MAX(date) as date FROM [nooredenadb].[company].[trades])) TEMP "
+                    f"WHERE type = {trade_type} AND date >= '{start_date}' AND date <= '{end_date}' "
                     f"GROUP BY portfolio_id, symbol, is_ros, is_paid_ros")
     trades = pd.read_sql(query_trades, db_conn)
     trades = trades[~trades["symbol"].str[:1].isin(["ض", "ط"])].reset_index(drop=True)
+
     if fix_exclude:
-        fix_income_symbols = get_fix_income_symbols()
-        fix_income_symbols = fix_income_symbols["symbol"].values.tolist()
-        trades = trades[~trades["symbol"].isin(fix_income_symbols)].reset_index(drop=True)
-    else:
-        pass
-    if not main_portfolio:
+        trades = trades[~trades["symbol"].isin(get_fix_income_symbols()["symbol"])].reset_index(drop=True)
+
+    if main_portfolio:
+        if not prx_portfolio:
+            trades = trades[trades["portfolio_id"] == 1].reset_index(drop=True)
+        trades.drop(labels=["total_cost_sep"], axis=1, inplace=True)
+
+    if (not main_portfolio) and prx_portfolio:
         trades = trades[trades["portfolio_id"] != 1].reset_index(drop=True)
-    if not prx_portfolio:
-        trades = trades[trades["portfolio_id"] == 1].reset_index(drop=True)
+        trades.drop(labels=["total_cost"], axis=1, inplace=True)
+        trades.rename({"total_cost_sep": "total_cost"}, axis=1, inplace=True)
+
     trades["basket"] = ["اصلی" if trades["portfolio_id"].iloc[i] == 1 else "prx" for i in range(len(trades))]
     trades.sort_values(by="value", ascending=False, ignore_index=True, inplace=True)
     trades["mean_price"] = round(trades["value"] / trades["volume"]).astype(int)
     trades["share_percent"] = trades["value"] / trades["value"].sum()
     trades = trades[cols + (trade_type - 1) * ["total_cost"]]
     symbols = get_symbols_data()[["symbol", "sector_name"]]
+    symbols_ros = symbols.copy()
+    symbols_ros["symbol"] = symbols_ros["symbol"] + "ح"
+    symbols = pd.concat([symbols, symbols_ros], axis=0, ignore_index=True)
     trades = trades.merge(symbols, on="symbol", how="left")
     return trades
 
@@ -177,9 +211,9 @@ def get_trades_sell(start_date: str, end_date: str, fix_exclude:bool = True,
                                 "profitloss_percent": sell["profitloss"].sum() / sell["total_cost"].sum()}])
     return {"sell": sell, "sell_total": sell_total, "sell_pie": sell_pie}
 
+
 ########################################################################################################################
-########################################################################################################################
-########################################################################################################################
+
 
 def get_avalhami_history() -> pd.DataFrame:
     q_ = ("SELECT JalaliDate date, SellNAVPerShare final_price, ISNULL(TEMP.funds_unit,0) amount,ISNULL(TEMP.cost, 0) "
@@ -190,6 +224,7 @@ def get_avalhami_history() -> pd.DataFrame:
     avalhami_history.sort_values("date", inplace=True, ignore_index=True)
     avalhami_history["volume"] = avalhami_history["amount"].cumsum()
     avalhami_history["total_cost"] = avalhami_history["total_cost"].cumsum()
+    avalhami_history["total_cost_sep"] = avalhami_history["total_cost"]
     avalhami_history["value"] = avalhami_history["volume"] * avalhami_history["final_price"]
     avalhami_history = avalhami_history[["date", "value", "total_cost"]].groupby(by="date", as_index=False).sum()
     return avalhami_history
@@ -203,16 +238,29 @@ def get_avalhami_profitloss() -> pd.DataFrame:
 
 def get_portfolio_history(start_date: str, end_date: str, include_avalhami: bool = True,
                           main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
+    if start_date >= end_date:
+        raise ValueError("start_date must be less than end_date")
     if (not main_portfolio) and (not prx_portfolio):
         raise ValueError("both main and prx could not be False!")
+    if (not main_portfolio) and include_avalhami:
+        raise ValueError("both main and avalham could not be False!!! main bust be True for (include_avalhami=True).")
+
     q_ = "SELECT * FROM [nooredenadb].[company].[portfolio_history] WHERE date>='{}' AND date<='{}'"
     portfolio_history = pd.read_sql(q_.format(start_date, end_date), db_conn)
-    if not main_portfolio:
+
+    if main_portfolio:
+        portfolio_history.drop(labels=["total_cost_sep"], axis=1, inplace=True)
+        if not prx_portfolio:
+            portfolio_history = portfolio_history[portfolio_history["portfolio_id"] == 1].reset_index(drop=True)
+
+    if (not main_portfolio) and prx_portfolio:
         portfolio_history = portfolio_history[portfolio_history["portfolio_id"] != 1].reset_index(drop=True)
-    if not prx_portfolio:
-        portfolio_history = portfolio_history[portfolio_history["portfolio_id"] == 1].reset_index(drop=True)
+        portfolio_history.drop(labels=["total_cost"], axis=1, inplace=True)
+        portfolio_history.rename({"total_cost_sep": "total_cost"}, axis=1, inplace=True)
+
     portfolio_history["value"] = portfolio_history["volume"] * portfolio_history["final_price"]
     portfolio_history = portfolio_history[["date", "value", "total_cost"]].groupby(by="date", as_index=False).sum()
+
     if main_portfolio and include_avalhami:
         avalhami_df = get_avalhami_history()
         avalhami_df.rename(columns={"total_cost": "total_cost_avalhami", "value": "value_avalhami"}, inplace=True)
@@ -226,22 +274,57 @@ def get_portfolio_history(start_date: str, end_date: str, include_avalhami: bool
         pass
     return portfolio_history
 
-def get_dividend(start_date: str, end_date: str) -> pd.DataFrame:
-    q_ = "SELECT date, dividend FROM [nooredenadb].[portfolio].[portfolio_dividend] WHERE date>'{}' AND date<='{}'"
+def get_dividend(start_date: str, end_date: str, main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
+    if start_date >= end_date:
+        raise ValueError("start_date must be less than end_date")
+    if (not main_portfolio) and (not prx_portfolio):
+        raise ValueError("both main and prx could not be False!")
+
+    q_ = ("SELECT date, dividend, portfolio_id FROM [nooredenadb].[portfolio].[portfolio_dividend]"
+          " WHERE date>'{}' AND date<='{}'")
     dividend = pd.read_sql(q_.format(start_date, end_date), db_conn)
+
+    if main_portfolio:
+        if not prx_portfolio:
+            dividend = dividend[dividend["portfolio_id"] == 1].reset_index(drop=True, inplace=False)
+    if (not main_portfolio) and prx_portfolio:
+        dividend = dividend[dividend["portfolio_id"] != 1].reset_index(drop=True, inplace=False)
+
     dividend["date_"] = dividend["date"].str[:7]
     dividend = dividend[["date_", "dividend"]].groupby(by=["date_"], as_index=False).sum()
     return dividend
 
-def get_profitloss(start_date: str, end_date: str, include_avalhami: bool = True) -> pd.DataFrame:
-    q_ = ("SELECT date, (value - total_cost) AS profitloss FROM (SELECT date, type, value, total_cost FROM "
-          "[nooredenadb].[company].[trades] UNION SELECT date, type, value, total_cost FROM "
-          "[nooredenadb].[brokers].[trades_last] WHERE date > (SELECT MAX(date) FROM [nooredenadb].[company].[trades])"
-          " AND SUBSTRING(symbol, 1, 1) NOt IN ('ض', 'ط')) AS TEMP WHERE type=2 AND date>'{}' AND date<='{}'")
+def get_profitloss(start_date: str, end_date: str, include_avalhami: bool = True,
+                   main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
+    if start_date >= end_date:
+        raise ValueError("start_date must be less than end_date")
+    if (not main_portfolio) and (not prx_portfolio):
+        raise ValueError("both main and prx could not be False!")
+    if (not main_portfolio) and include_avalhami:
+        raise ValueError("both main and avalham could not be False!!! main bust be True for (include_avalhami=True).")
+
+    q_ = ("SELECT date, portfolio_id, value, total_cost, total_cost_sep FROM (SELECT date, portfolio_id, type, "
+          "value, total_cost, total_cost_sep FROM [nooredenadb].[company].[trades] UNION SELECT date, portfolio_id,"
+          " type, value, total_cost, total_cost_sep FROM [nooredenadb].[brokers].[trades_last] WHERE date > (SELECT"
+          " MAX(date) FROM [nooredenadb].[company].[trades]) AND SUBSTRING(symbol, 1, 1) NOt IN ('ض', 'ط')) AS TEMP"
+          " WHERE type=2 AND date>'{}' AND date<='{}'")
     profitloss = pd.read_sql(q_.format(start_date, end_date), db_conn)
+
+    if main_portfolio:
+        if not prx_portfolio:
+            profitloss = profitloss[profitloss["portfolio_id"] == 1].reset_index(drop=True, inplace=False)
+        profitloss.drop(labels=["total_cost_sep"], axis=1, inplace=True)
+
+    if (not main_portfolio) and prx_portfolio:
+        profitloss = profitloss[profitloss["portfolio_id"] != 1].reset_index(drop=True, inplace=False)
+        profitloss.drop(labels=["total_cost"], axis=1, inplace=True)
+        profitloss.rename({"total_cost_sep": "total_cost"}, axis=1, inplace=True)
+
+    profitloss["profitloss"] = profitloss["value"] - profitloss["total_cost"]
     profitloss["date_"] = profitloss["date"].str[:7]
     profitloss = profitloss[["date_", "profitloss"]].groupby(by=["date_"], as_index=False).sum()
-    if include_avalhami:
+
+    if main_portfolio and include_avalhami:
         avalhami_profitloss = get_avalhami_profitloss()
         avalhami_profitloss.rename(columns={"profitloss": "profitloss_avalhami"}, inplace=True)
         profitloss = profitloss.merge(avalhami_profitloss, on="date_", how="left")
@@ -276,27 +359,50 @@ def get_indices(start_date: str, end_date: str) -> pd.DataFrame:
                f"[nooredenadb].[tsetmc].[indices_data_today] WHERE indices_id='{indices["indices_id"].iloc[idx_]}'")
         tmp_today = pd.read_sql(q__, db_conn)
         tmp = pd.concat([tmp, tmp_today], axis=0, ignore_index=True)
+        tmp.drop_duplicates(subset="date_", keep="last", inplace=True, ignore_index=True)
         tmp["return"] = tmp["close_price"].diff(periods=1) / tmp["close_price"].shift(periods=1)
         tmp.rename({"close_price": index_name, "return": "return_" + index_name}, axis=1, inplace=True)
         indices_df = indices_df.merge(tmp, on="date_", how="outer")
     return indices_df
 
+def get_bazdehi_table(start_date: str, end_date: str, include_avalhami: bool = True,
+                      main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
+    if start_date >= end_date:
+        raise ValueError("start_date must be less than end_date")
+    if (not main_portfolio) and (not prx_portfolio):
+        raise ValueError("both main and prx could not be False!")
+    if (not main_portfolio) and include_avalhami:
+        raise ValueError("both main and avalham could not be False!!! main bust be True for (include_avalhami=True).")
 
-def get_bazdehi_table(start_date: str, end_date: str, include_avalhami: bool = True) -> pd.DataFrame:
-    portfolio_ = get_portfolio(include_avalhami=include_avalhami)
-    portfolio_df = get_portfolio_history(start_date, end_date, include_avalhami=include_avalhami)
-    portfolio_df = pd.concat([portfolio_df, pd.DataFrame([{
-        "date": portfolio_["date"].iloc[0], "value": portfolio_["value"].sum(),
-        "total_cost": portfolio_["total_cost"].sum()}])], axis=0, ignore_index=True)
+    portfolio_ = get_portfolio(date="last", main_portfolio=main_portfolio,
+                               prx_portfolio=prx_portfolio, include_avalhami=include_avalhami)
+    portfolio_df = get_portfolio_history(start_date, end_date, main_portfolio=main_portfolio,
+                                         prx_portfolio=prx_portfolio, include_avalhami=include_avalhami)
+
+    portfolio_df = pd.concat([
+        portfolio_df,pd.DataFrame([{"date": portfolio_["date"].iloc[0],"value": portfolio_["value"].sum(),
+                                    "total_cost": portfolio_["total_cost"].sum()}])], axis=0, ignore_index=True)
+    if (not main_portfolio) and prx_portfolio:
+        if start_date < portfolio_df["date"].min():
+            portfolio_df = pd.concat(
+                [portfolio_df,
+                 pd.DataFrame([{"date": "1404/01/31", "value": 445315103610, "total_cost": 445315103610}])], axis=0)
+            portfolio_df.sort_values(by="date", ascending=True, inplace=True, ignore_index=True)
+
+    portfolio_df = portfolio_df[portfolio_df["date"] <= end_date].reset_index(drop=True, inplace=False)
     portfolio_df["date_"] = portfolio_df["date"].str[:7]
-    dividend_df = get_dividend(start_date, end_date)
-    profitloss_df = get_profitloss(start_date, end_date, include_avalhami=include_avalhami)
+
+    dividend_df = get_dividend(start_date, end_date, main_portfolio=main_portfolio, prx_portfolio=prx_portfolio)
+    profitloss_df = get_profitloss(start_date, end_date, main_portfolio=main_portfolio,
+                                   prx_portfolio=prx_portfolio, include_avalhami=include_avalhami)
+
     bazdehi_df = portfolio_df.merge(dividend_df, on="date_", how="left").merge(profitloss_df, on="date_", how="left")
+
     bazdehi_df["return_portfolio"] = ((((bazdehi_df["dividend"].fillna(0) + bazdehi_df["profitloss"].fillna(0)) +
                                         (bazdehi_df["value"] - bazdehi_df["total_cost"])) - (
             bazdehi_df["value"].shift(periods=1) - bazdehi_df["total_cost"].shift(periods=1))) /
                                       bazdehi_df["value"].shift(periods=1))
-    indices_df = get_indices("1403/06/31", end_date)
+    indices_df = get_indices(max(start_date, portfolio_df["date"].min()), end_date)
     bazdehi_df = bazdehi_df.merge(indices_df, on="date_", how="left")
     bazdehi_df.drop(labels=["date_"], axis=1, inplace=True)
 
@@ -312,11 +418,25 @@ def get_bazdehi_table(start_date: str, end_date: str, include_avalhami: bool = T
     bazdehi_df = bazdehi_df.merge(bazdehi_table_retuns_3_month, on=["date"], how="left")
     return bazdehi_df
 
+
 ########################################################################################################################
 
-if __name__ == "__main__":
+def date_dropdown_provider(get_last: bool = True) -> dict[str, Union[str, list[dict[str, str]]]]:
+    dates_ = pd.read_sql("SELECT DISTINCT(date) value FROM [nooredenadb].[company].[portfolio_history] ORDER BY date DESC", db_conn)
+    dates_["label"] = dates_["value"]
+    prev_12 = dates_["value"].iloc[12]
+    if get_last:
+        dates_ = pd.concat([pd.DataFrame([{"value": "last", "label": "آخرین وضعیت"}]), dates_], axis=0, ignore_index=True)
+    dates_ = dates_.to_dict(orient="records")
+    return {"options": dates_, "12prev": prev_12}
 
-    import jdatetime
+
+
+
+########################################################################################################################
+
+
+if __name__ == "__main__":
 
     today = jdatetime.datetime.today()
 
