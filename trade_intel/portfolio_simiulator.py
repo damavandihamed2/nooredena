@@ -44,20 +44,20 @@ query_cashflow = (f"SELECT * FROM [nooredenadb].[company].[cashflow] where date 
                   f"and (meeting_date <= '{start_day}' or debtor > 0) order by date")
 cashflow = pd.read_sql(query_cashflow, powerbi_database)
 
-query_avalhami_raw = ("SELECT [JalaliDate] date, [SellNAVPerShare] final_price, ISNULL(TEMP.funds_unit, 0) amount, "
-                      "ISNULL(TEMP.cost, 0) total_cost FROM [nooredenadb].[extra].[avalhami_nav] LEFT JOIN (SELECT date,"
-                      " SUM((CASE WHEN type=1 THEN funds_unit ELSE funds_unit * -1 END)) funds_unit, SUM((CASE WHEN "
-                      "type=1 THEN value ELSE cost * -1 END)) AS cost FROM [nooredenadb].[extra].[avalhami_trades] "
-                      "GROUP BY date) AS TEMP ON avalhami_nav.JalaliDate=TEMP.date")
-avalhami_df = pd.read_sql(query_avalhami_raw, powerbi_database)
-avalhami_df = avalhami_df[(avalhami_df["date"] > start_day) & (avalhami_df["amount"] < 0)]
-avalhami_df["creditor"] = avalhami_df["amount"] * avalhami_df["final_price"] * -1
-avalhami_df = avalhami_df[["date", "creditor"]]
-avalhami_df["debtor"] = 0
-avalhami_df["source"] = "حامی اول"
-avalhami_df["description"] = "واریز به حساب بابت ابطال واحدهای صندوق بازارگردانی حامی اول (حامی اول)"
-
-cashflow = pd.concat([cashflow, avalhami_df], axis=0, ignore_index=True)
+# query_avalhami_raw = ("SELECT [JalaliDate] date, [SellNAVPerShare] final_price, ISNULL(TEMP.funds_unit, 0) amount, "
+#                       "ISNULL(TEMP.cost, 0) total_cost FROM [nooredenadb].[extra].[avalhami_nav] LEFT JOIN (SELECT date,"
+#                       " SUM((CASE WHEN type=1 THEN funds_unit ELSE funds_unit * -1 END)) funds_unit, SUM((CASE WHEN "
+#                       "type=1 THEN value ELSE cost * -1 END)) AS cost FROM [nooredenadb].[extra].[avalhami_trades] "
+#                       "GROUP BY date) AS TEMP ON avalhami_nav.JalaliDate=TEMP.date")
+# avalhami_df = pd.read_sql(query_avalhami_raw, powerbi_database)
+# avalhami_df = avalhami_df[(avalhami_df["date"] > start_day) & (avalhami_df["amount"] < 0)]
+# avalhami_df["creditor"] = avalhami_df["amount"] * avalhami_df["final_price"] * -1
+# avalhami_df = avalhami_df[["date", "creditor"]]
+# avalhami_df["debtor"] = 0
+# avalhami_df["source"] = "حامی اول"
+# avalhami_df["description"] = "واریز به حساب بابت ابطال واحدهای صندوق بازارگردانی حامی اول (حامی اول)"
+#
+# cashflow = pd.concat([cashflow, avalhami_df], axis=0, ignore_index=True)
 
 cashflow["due_date"] = [get_last_date(date_=cashflow["date"].iloc[i]) if ~cashflow["date"].isna().iloc[i] else np.nan
                         for i in range(len(cashflow))]

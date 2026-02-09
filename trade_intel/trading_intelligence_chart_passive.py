@@ -219,11 +219,11 @@ fig.update_xaxes(tickfont=dict(family="B Nazanin", size=18), calendar="jalali", 
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", ticksuffix="% ", showgrid=False, zeroline=True, zerolinewidth=4, secondary_y=False,
                  # range=y_range[0]["y1_range"],
-                 range=[-40, 90])
+                 range=[-25, 90])
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", secondary_y=True,
                  # range=y_range[0]["y2_range"],
-                 range=[-1800, 4000])
+                 range=[-2000, 7000])
 fig.update_layout(legend={"x": 0.95, "y": 1})
 fig.update_layout(
     template="gridon",
