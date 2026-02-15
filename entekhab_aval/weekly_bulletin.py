@@ -284,7 +284,8 @@ else:
     # start_date = start_date - jdatetime.timedelta(days=1)
     end_date = today - jdatetime.timedelta(days=(today.weekday() - 4))
 
-# end_date = today - jdatetime.timedelta(days=1)
+# start_date = today - jdatetime.timedelta(days=12)
+# end_date = today - jdatetime.timedelta(days=5)
 
 funds_gold = pd.read_sql("SELECT symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols] "
                          "WHERE sector='68' AND yval='380' AND symbol_name LIKE '%طلا%'", powerbi_database)
