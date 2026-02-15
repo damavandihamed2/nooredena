@@ -89,7 +89,7 @@ omex_portfolio.drop(labels=["principalId", "lVal30", "baseInstrumentId", "csDate
                             "versionId","totalSellRevenue", "blockedStrategyQuantity", "remainingStrategyQuantity",
                             "initialMargin", "requiredMargin", "maintenanceMargin", "maxCOP", "strikePrice",
                             "optionSide"], axis=1, inplace=True)
-omex_portfolio.rename({"instrumentName": "symbol", "instrumentId": "symbol_code", "orderSide": "type",
+omex_portfolio.rename({"instrumentName": "symbol", "instrumentId": "symbol_code", "orderSide": "type", "strikePrice": "strike_price",
                        "count": "volume", "cSize": "contract_size", "eDate": "due_date", "executedPrice": "mean_price",
                        "breakEvenPrice": "break_even_price", "blockedAmount": "margin_value"}, axis=1, inplace=True)
 omex_portfolio["type"] = (omex_portfolio["type"] == "Buy") * 1 + (omex_portfolio["type"] == "Sell") * 2
@@ -100,7 +100,7 @@ online_plus_portfolio.drop(labels=["CustomerTitle", "PSDate", "MarketType", "Sym
                                    "BuyOrderCount", "SellTotalCount", "BuyTotalCount", "MarginCount",
                                    "BlockedMarginCount"], axis=1, inplace=True)
 online_plus_portfolio.rename({"Symbol": "symbol", "NSCCode": "symbol_code", "PSDateDate": "due_date",
-                              "CSize": "contract_size","SellPositionCount": "volume_sell",
+                              "CSize": "contract_size","SellPositionCount": "volume_sell", "StrikePrice": "strike_price",
                               "BuyPositionCount": "volume_buy", "MarginValue": "margin_value"}, axis=1, inplace=True)
 online_plus_portfolio["type"] = (online_plus_portfolio["volume_buy"] > 0) * 1 + (online_plus_portfolio["volume_sell"] > 0) * 2
 online_plus_portfolio["volume"] = online_plus_portfolio["volume_buy"] + online_plus_portfolio["volume_sell"]
