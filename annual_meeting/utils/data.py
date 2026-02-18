@@ -125,153 +125,54 @@ def pie_chart_data(trades_df: pd.DataFrame, agg_percent: float = 0.01) -> pd.Dat
 ########################################################################################################################
 
 
-def get_avalhami_history() -> pd.DataFrame:
-    q_ = ("SELECT JalaliDate date, SellNAVPerShare final_price, ISNULL(TEMP.funds_unit,0) amount,ISNULL(TEMP.cost, 0) "
-          "total_cost FROM [nooredenadb].[extra].[avalhami_nav] FULL JOIN (SELECT date,SUM((CASE WHEN type=1 THEN "
-          "funds_unit ELSE funds_unit*-1 END)) funds_unit,SUM((CASE WHEN type=1 THEN value ELSE cost * -1 END)) AS cost"
-          " FROM [nooredenadb].[extra].[avalhami_trades] GROUP BY date) TEMP ON avalhami_nav.JalaliDate=TEMP.date")
-    avalhami_history = pd.read_sql(q_, db_conn)
-    avalhami_history.sort_values("date", inplace=True, ignore_index=True)
-    avalhami_history["volume"] = avalhami_history["amount"].cumsum()
-    avalhami_history["total_cost"] = avalhami_history["total_cost"].cumsum()
-    avalhami_history["total_cost_sep"] = avalhami_history["total_cost"]
-    avalhami_history["value"] = avalhami_history["volume"] * avalhami_history["final_price"]
-    avalhami_history = avalhami_history[["date", "value", "total_cost"]].groupby(by="date", as_index=False).sum()
-    return avalhami_history
 
-def get_avalhami_profitloss() -> pd.DataFrame:
-    q_ = "SELECT date, (value - cost) profitloss FROM [nooredenadb].[extra].[avalhami_trades] WHERE type=2"
-    avalhami_profitloss = pd.read_sql(q_, db_conn)
-    avalhami_profitloss["date_"] = avalhami_profitloss["date"].str[:7]
-    avalhami_profitloss = avalhami_profitloss[["date_", "profitloss"]].groupby(by="date_", as_index=False).sum()
-    return avalhami_profitloss
+def get_credits(
+        start_date: str,
+        end_date: str,
+        main_portfolio: bool = True,
+        prx_portfolio: bool = True
 
-def get_portfolio_history(start_date: str, end_date: str, include_avalhami: bool = True,
-                          main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
-    if start_date >= end_date:
-        raise ValueError("start_date must be less than end_date")
-    if (not main_portfolio) and (not prx_portfolio):
-        raise ValueError("both main and prx could not be False!")
-    if (not main_portfolio) and include_avalhami:
-        raise ValueError("both main and avalham could not be False!!! main bust be True for (include_avalhami=True).")
+) -> dict[str: pd.DataFrame]:
 
-    q_ = "SELECT * FROM [nooredenadb].[company].[portfolio_history] WHERE date>='{}' AND date<='{}'"
-    portfolio_history = pd.read_sql(q_.format(start_date, end_date), db_conn)
-
-    if main_portfolio:
-        portfolio_history.drop(labels=["total_cost_sep"], axis=1, inplace=True)
-        if not prx_portfolio:
-            portfolio_history = portfolio_history[portfolio_history["portfolio_id"] == 1].reset_index(drop=True)
-
-    if (not main_portfolio) and prx_portfolio:
-        portfolio_history = portfolio_history[portfolio_history["portfolio_id"] != 1].reset_index(drop=True)
-        portfolio_history.drop(labels=["total_cost"], axis=1, inplace=True)
-        portfolio_history.rename({"total_cost_sep": "total_cost"}, axis=1, inplace=True)
-
-    portfolio_history["value"] = portfolio_history["volume"] * portfolio_history["final_price"]
-    portfolio_history = portfolio_history[["date", "value", "total_cost"]].groupby(by="date", as_index=False).sum()
-
-    if main_portfolio and include_avalhami:
-        avalhami_df = get_avalhami_history()
-        avalhami_df.rename(columns={"total_cost": "total_cost_avalhami", "value": "value_avalhami"}, inplace=True)
-        portfolio_history = portfolio_history.merge(avalhami_df, on="date", how="left")
-        portfolio_history["value_avalhami"].ffill(inplace=True)
-        portfolio_history["total_cost_avalhami"].ffill(inplace=True)
-        portfolio_history["value"] += portfolio_history["value_avalhami"]
-        portfolio_history["total_cost"] += portfolio_history["total_cost_avalhami"]
-        portfolio_history = portfolio_history[["date", "value", "total_cost"]]
-    else:
-        pass
-    return portfolio_history
-
-def get_dividend(start_date: str, end_date: str, main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
-    if start_date >= end_date:
-        raise ValueError("start_date must be less than end_date")
     if (not main_portfolio) and (not prx_portfolio):
         raise ValueError("both main and prx could not be False!")
 
-    q_ = ("SELECT date, dividend, portfolio_id FROM [nooredenadb].[portfolio].[portfolio_dividend]"
-          " WHERE date>'{}' AND date<='{}'")
-    dividend = pd.read_sql(q_.format(start_date, end_date), db_conn)
+    start_date_m = jdatetime.datetime.strptime(start_date, "%Y/%m/%d").togregorian().strftime("%Y-%m-%d")
+    credits_rayan = pd.read_sql("SELECT tr.transactionDate AS [date], tr.remaining, tr.broker_id, tr.portfolio_id FROM"
+                                " nooredenadb.brokers.trades_rayan AS tr JOIN (SELECT MAX(row_) AS row_ FROM "
+                                f"[nooredenadb].[brokers].[trades_rayan] WHERE transactionDate >= '{start_date}' "
+                                "GROUP BY transactionDate, broker_id, portfolio_id ) AS last_rows "
+                                "ON tr.row_ = last_rows.row_ ORDER BY tr.transactionDate, tr.portfolio_id, "
+                                "tr.broker_id;", db_conn)
+    credits_tadbir = pd.read_sql("WITH last_rows AS (SELECT MAX(row_) AS row_ FROM "
+                                 f"[nooredenadb].[brokers].[trades_tadbir_ledger] WHERE "
+                                 f"TransactionDate >= '{start_date_m}' AND Description NOT "
+                                 f"IN (N'سند افتتاحیه مورخ {0}', N'سند اختتامیه') GROUP BY "
+                                 "substring(TransactionDate, 1, 10), broker_id, portfolio_id), d AS (SELECT Miladi,"
+                                 f" Jalali_1 FROM [nooredenadb].[extra].[dim_date] WHERE Jalali_1 >= '{start_date}' AND"
+                                 " Miladi <= CAST(GETDATE() AS date)) SELECT tr.broker_id, tr.portfolio_id, tr.Remain "
+                                 "AS remaining, d.Jalali_1 AS [date] FROM [nooredenadb].[brokers].[trades_tadbir_ledger]"
+                                 " AS tr JOIN last_rows lr ON tr.row_ = lr.row_ JOIN d ON substring(TransactionDate,"
+                                 " 1, 10) = d.Miladi ORDER BY d.Jalali_1, tr.portfolio_id, tr.broker_id;", db_conn)
+    credits = pd.concat([credits_rayan, credits_tadbir], axis=0, ignore_index=True)
 
-    if main_portfolio:
-        if not prx_portfolio:
-            dividend = dividend[dividend["portfolio_id"] == 1].reset_index(drop=True, inplace=False)
+    credits_index = pd.MultiIndex.from_product(
+        [credits["date"].unique(), credits["broker_id"].unique(), credits["portfolio_id"].unique()],
+        names=['date', 'broker_id', "portfolio_id"])
+    credits_df = pd.DataFrame(index=credits_index).reset_index(drop=False, inplace=False)
+    credits_df = credits_df.merge(credits, on=["date", "broker_id", "portfolio_id"], how="left").sort_values(
+        by=["portfolio_id", "broker_id", "date"], inplace=False)
+
+    credits_df["remaining"] = credits_df.groupby(["portfolio_id", "broker_id"])["remaining"].ffill()
+    credits_df["remaining"] = (credits_df["remaining"] < 0) * credits_df["remaining"]
+
+    if main_portfolio and (not prx_portfolio):
+        credits_df = credits_df[credits_df["portfolio_id"] == 1]
     if (not main_portfolio) and prx_portfolio:
-        dividend = dividend[dividend["portfolio_id"] != 1].reset_index(drop=True, inplace=False)
+        credits_df = credits_df[credits_df["portfolio_id"] != 1]
 
-    dividend["date_"] = dividend["date"].str[:7]
-    dividend = dividend[["date_", "dividend"]].groupby(by=["date_"], as_index=False).sum()
-    return dividend
-
-def get_profitloss(start_date: str, end_date: str, include_avalhami: bool = True,
-                   main_portfolio: bool = True, prx_portfolio: bool = True) -> pd.DataFrame:
-    if start_date >= end_date:
-        raise ValueError("start_date must be less than end_date")
-    if (not main_portfolio) and (not prx_portfolio):
-        raise ValueError("both main and prx could not be False!")
-    if (not main_portfolio) and include_avalhami:
-        raise ValueError("both main and avalham could not be False!!! main bust be True for (include_avalhami=True).")
-
-    q_ = ("SELECT date, portfolio_id, value, total_cost, total_cost_sep FROM (SELECT date, portfolio_id, type, "
-          "value, total_cost, total_cost_sep FROM [nooredenadb].[company].[trades] UNION SELECT date, portfolio_id,"
-          " type, value, total_cost, total_cost_sep FROM [nooredenadb].[brokers].[trades_last] WHERE date > (SELECT"
-          " MAX(date) FROM [nooredenadb].[company].[trades]) AND SUBSTRING(symbol, 1, 1) NOt IN ('ض', 'ط')) AS TEMP"
-          " WHERE type=2 AND date>'{}' AND date<='{}'")
-    profitloss = pd.read_sql(q_.format(start_date, end_date), db_conn)
-
-    if main_portfolio:
-        if not prx_portfolio:
-            profitloss = profitloss[profitloss["portfolio_id"] == 1].reset_index(drop=True, inplace=False)
-        profitloss.drop(labels=["total_cost_sep"], axis=1, inplace=True)
-
-    if (not main_portfolio) and prx_portfolio:
-        profitloss = profitloss[profitloss["portfolio_id"] != 1].reset_index(drop=True, inplace=False)
-        profitloss.drop(labels=["total_cost"], axis=1, inplace=True)
-        profitloss.rename({"total_cost_sep": "total_cost"}, axis=1, inplace=True)
-
-    profitloss["profitloss"] = profitloss["value"] - profitloss["total_cost"]
-    profitloss["date_"] = profitloss["date"].str[:7]
-    profitloss = profitloss[["date_", "profitloss"]].groupby(by=["date_"], as_index=False).sum()
-
-    if main_portfolio and include_avalhami:
-        avalhami_profitloss = get_avalhami_profitloss()
-        avalhami_profitloss.rename(columns={"profitloss": "profitloss_avalhami"}, inplace=True)
-        profitloss = profitloss.merge(avalhami_profitloss, on="date_", how="left")
-        profitloss["profitloss"] += profitloss["profitloss_avalhami"].fillna(0)
-        profitloss = profitloss[["date_", "profitloss"]]
-    else:
-        pass
-    return profitloss
-
-def get_index(index_id: str, start_date: str, end_date: str) -> pd.DataFrame:
-    q_ = (f"SELECT TEMP1.close_price,TEMP2.date FROM (SELECT TRY_CONVERT(INT,REPLACE(Miladi,'-','')) date_m,"
-          f"Jalali_1 date FROM [nooredenadb].[extra].[dim_date]) TEMP2 LEFT JOIN (SELECT * FROM "
-          f"[nooredenadb].[tsetmc].[indices_history] WHERE indices_id='{index_id}') TEMP1 "
-          f"ON TEMP1.date=TEMP2.date_m ORDER BY TEMP2.date")
-    index_df = pd.read_sql(q_, db_conn)
-    index_df["close_price"].ffill(inplace=True)
-    index_df["date_"] = index_df["date"].str[:7]
-    index_df.drop_duplicates(subset="date_", keep="last", inplace=True, ignore_index=True)
-    index_df = index_df[(index_df["date"] >= start_date) & (index_df["date"] <= end_date)][["date_", "close_price"]]
-    return index_df
-
-def get_indices(start_date: str, end_date: str) -> pd.DataFrame:
-    index_names_mapper = {"100": "total_index", "104": "price_index_eq", "56": "investment_index"}
-    q_ = "SELECT indices,indices_name,indices_id FROM [nooredenadb].[tsetmc].[indices] WHERE indices IN ('100','104','56')"
-    indices = pd.read_sql(q_, db_conn)
-    indices.sort_values(by="indices_name", ascending=False, ignore_index=True, inplace=True)
-    indices_df = pd.DataFrame(columns=["date_"])
-    for idx_ in range(len(indices)):
-        index_name = index_names_mapper[indices["indices"].iloc[idx_]]
-        tmp = get_index(indices["indices_id"].iloc[idx_], start_date, end_date)
-        q__ = (f"SELECT SUBSTRING(REPLACE(date,'-','/'), 1, 7) date_,close_price FROM "
-               f"[nooredenadb].[tsetmc].[indices_data_today] WHERE indices_id='{indices["indices_id"].iloc[idx_]}'")
-        tmp_today = pd.read_sql(q__, db_conn)
-        tmp = pd.concat([tmp, tmp_today], axis=0, ignore_index=True)
-        tmp.drop_duplicates(subset="date_", keep="last", inplace=True, ignore_index=True)
-        tmp["return"] = tmp["close_price"].diff(periods=1) / tmp["close_price"].shift(periods=1)
-        tmp.rename({"close_price": index_name, "return": "return_" + index_name}, axis=1, inplace=True)
-        indices_df = indices_df.merge(tmp, on="date_", how="outer")
-    return indices_df
+    credits_df = credits_df[["date", "remaining"]].groupby(by="date", as_index=False).sum()
+    credits_df = credits_df[credits_df["date"] <= end_date].sort_values(by="date", ascending=True, ignore_index=True)
+    credits_df["remaining"] *= -1
+    return credits_df
 
