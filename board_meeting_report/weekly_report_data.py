@@ -26,8 +26,14 @@ def get_last_trade_date():
     return last_date
 
 
+def get_portfolio_specs() -> pd.DataFrame:
+    portfolio_specs = pd.read_sql("SELECT * FROM [nooredenadb].[brokers].[portfolio_specifics]", db_conn)
+    return portfolio_specs
+
 def check_basket(l: set):
-    check_1, check_2 =  1 in l, bool(l & {25, 26, 27, 28})
+    p_s = get_portfolio_specs()
+    prx = set(p_s[p_s["portfolio_type"] != "main"]["portfolio_id"].values.tolist())
+    check_1, check_2 =  1 in l, bool(l & prx)
     if check_1 and check_2: return "هر دو"
     elif check_1: return "اصلی"
     elif check_2: return "prx"
