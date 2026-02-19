@@ -54,9 +54,10 @@ def get_trades_value(start_date: str, end_date: str, trade_type: Optional[Litera
     trades.sort_values(by="value", ascending=True, inplace=True, ignore_index=True)
     return trades
 
-########################################################################################################################
+##################################################
 
-def get_credits(start_date: str, end_date: str, main_portfolio: bool = True, prx_portfolio: bool = True) -> dict[str: pd.DataFrame]:
+def get_credits(start_date: str, end_date: str, main_portfolio: bool = True,
+                prx_portfolio: bool = True) -> dict[str: pd.DataFrame]:
 
     if (not main_portfolio) and (not prx_portfolio):
         raise ValueError("both main and prx could not be False!")
@@ -99,4 +100,43 @@ def get_credits(start_date: str, end_date: str, main_portfolio: bool = True, prx
     credits_df = credits_df[credits_df["date"] <= end_date].sort_values(by="date", ascending=True, ignore_index=True)
     credits_df["remaining"] *= -1
     return credits_df
+
+##################################################
+
+def get_portfolio_data_daily(start_date: str, end_date: str, main_portfolio: bool = True,
+                             prx_portfolio: bool = True) -> pd.DataFrame:
+
+    if (not main_portfolio) and (not prx_portfolio):
+        raise ValueError("both main and prx could not be False!")
+
+    sigma_portfolio = pd.read_sql("SELECT portfolio_id, date, sum(total_cost) cost, sum(gross_value_final_price) value"
+                                  f" FROM [nooredenadb].[sigma].[portfolio] where date >= '{start_date}' and "
+                                  f"date <= '{end_date}' and type in ('صندوق', 'گواهی سپرده کالایی', 'حق تقدم', 'سهام') "
+                                  "group by portfolio_id, date", db_conn)
+    sigma_dividend = pd.read_sql("SELECT portfolio_id, meeting_date date, sum(value) dividend FROM "
+                                 f"[nooredenadb].[sigma].[dividend] where meeting_date >= '{start_date}' and "
+                                 f"meeting_date <= '{end_date}' and value > 0 group by portfolio_id, meeting_date",
+                                 db_conn)
+    sigma_profit = pd.read_sql("SELECT portfolio_id, date, sum(net_profit) profit FROM [nooredenadb].[sigma].[buysell]"
+                               f" where date >= '{start_date}' and date <= '{end_date}' and action='فروش' and "
+                               "type!='اختیار معامله' group by portfolio_id, date", db_conn)
+    if main_portfolio and (not prx_portfolio):
+        sigma_portfolio = sigma_portfolio[sigma_portfolio["portfolio_id"] == 1]
+        sigma_dividend = sigma_dividend[sigma_dividend["portfolio_id"] == 1]
+        sigma_profit = sigma_profit[sigma_profit["portfolio_id"] == 1]
+    if (not main_portfolio) and prx_portfolio:
+        sigma_portfolio = sigma_portfolio[sigma_portfolio["portfolio_id"] != 1]
+        sigma_dividend = sigma_dividend[sigma_dividend["portfolio_id"] != 1]
+        sigma_profit = sigma_profit[sigma_profit["portfolio_id"] != 1]
+
+    sigma_portfolio = sigma_portfolio.drop(
+        labels="portfolio_id",axis=1, inplace=False).groupby("date", as_index=False).sum()
+    sigma_dividend = sigma_dividend.drop(
+        labels="portfolio_id",axis=1, inplace=False).groupby("date", as_index=False).sum()
+    sigma_profit = sigma_profit.drop(
+        labels="portfolio_id",axis=1, inplace=False).groupby("date", as_index=False).sum()
+    portfolio = sigma_portfolio.merge(
+        sigma_profit, on="date", how="outer").merge(sigma_dividend, on="date", how="outer").fillna(0, inplace=False)
+
+    return portfolio
 
