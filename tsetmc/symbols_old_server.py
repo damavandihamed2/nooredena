@@ -14,9 +14,9 @@ logging.basicConfig(filename="C:/Users/Administrator.NOOREDENA/PycharmProjects/b
                     level=logging.ERROR,
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
-powerbi_database = make_connection()
+db_conn = make_connection()
 
-symbols = pd.read_sql("SELECT DISTINCT symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols]", powerbi_database)
+symbols = pd.read_sql("SELECT DISTINCT symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols]", db_conn)
 
 for i in tqdm(range(len(symbols))):
 

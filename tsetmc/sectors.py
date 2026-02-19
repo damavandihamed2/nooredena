@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 dl = ["10523825119011581", "49579049405614711", "62752761908615603", "71704845530629737", "43754960038275285",
       "8384385859414435", "69932667409721265", "5798407779416661", "32097828799138957", "67130298613737946",
       "46342955726788357", "30655480864841493"]
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 ###########################################################################################################
 
@@ -52,7 +52,7 @@ indices = indices[["insCode", "sector"]].rename({"insCode": "sector_id"}, axis=1
 
 static_data_ = static_data.merge(indices, on="sector", how="left")
 
-cursor = powerbi_database.cursor()
+cursor = db_conn.cursor()
 cursor.execute("TRUNCATE TABLE [nooredenadb].[tsetmc].[sectors]")
 cursor.close()
 insert_to_database(dataframe=static_data_, database_table="[nooredenadb].[tsetmc].[sectors]")

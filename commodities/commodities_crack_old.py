@@ -10,10 +10,10 @@ from utils.database import make_connection, insert_to_database
 warnings.filterwarnings("ignore")
 result_path = "D:/database/commodity/results.xlsx"
 today = jdatetime.datetime.today()
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 cmdty = pd.read_sql("SELECT [date], [date_jalali], [price] ,[commodity] ,[reference] FROM "
-                    "[nooredenadb].[commodity].[commodities_data]", powerbi_database)
+                    "[nooredenadb].[commodity].[commodities_data]", db_conn)
 
 brent = cmdty[cmdty["commodity"] == "نفت برنت"]
 dubai = cmdty[cmdty["commodity"] == "نفت دبی"]
@@ -462,7 +462,7 @@ ll = chart_df["name"].unique().tolist()
 for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
     cursor.close()
     insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -526,7 +526,7 @@ ll = chart_df["name"].unique().tolist()
 for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
     cursor.close()
     insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -535,9 +535,9 @@ for k in tqdm(range(len(ll))):
 ########################################################################################################################
 
 copper = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-3-16' "
-                     "and Quantity > 0 order by date", powerbi_database)
+                     "and Quantity > 0 order by date", db_conn)
 copper_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-3-16'"
-                      " and Quantity > 0", powerbi_database)
+                      " and Quantity > 0", db_conn)
 if len(copper_) > 0:
     copper = pd.concat([copper, copper_], axis=0, ignore_index=True)
 copper[["Symbol1", "Symbol2", "Symbol3", "Symbol4"]] = copper["Symbol"].str.split("-", expand=True)
@@ -547,9 +547,9 @@ copper["copper"] = copper["TotalPrice"]/copper["Quantity"]
 copper = copper[["date", "copper"]]
 
 zinc = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-4-18'"
-                   " and Quantity > 0 order by date", powerbi_database)
+                   " and Quantity > 0 order by date", db_conn)
 zinc_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-4-18'"
-                    " and Quantity > 0", powerbi_database)
+                    " and Quantity > 0", db_conn)
 if len(zinc_) > 0:
     zinc = pd.concat([zinc, zinc_], axis=0, ignore_index=True)
 zinc = zinc.groupby("date", as_index=False).sum(numeric_only=True)
@@ -557,9 +557,9 @@ zinc["zinc"] = zinc["TotalPrice"]/zinc["Quantity"]
 zinc = zinc[["date", "zinc"]]
 
 aluminium = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-2-11'"
-                        " and Quantity > 0 order by date", powerbi_database)
+                        " and Quantity > 0 order by date", db_conn)
 aluminium_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-2-11'"
-                         " and Quantity > 0", powerbi_database)
+                         " and Quantity > 0", db_conn)
 if len(aluminium_) > 0:
     aluminium = pd.concat([aluminium, aluminium_], axis=0, ignore_index=True)
 aluminium = aluminium.groupby("date", as_index=False).sum(numeric_only=True)
@@ -567,9 +567,9 @@ aluminium["aluminium"] = aluminium["TotalPrice"]/aluminium["Quantity"]
 aluminium = aluminium[["date", "aluminium"]]
 
 bb = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and "
-                 "Category='1-1-1' and ProducerName='فولاد خوزستان' and Quantity > 0 order by date", powerbi_database)
+                 "Category='1-1-1' and ProducerName='فولاد خوزستان' and Quantity > 0 order by date", db_conn)
 bb_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-1-1' and "
-                  "ProducerName='فولاد خوزستان' and Quantity > 0 order by date", powerbi_database)
+                  "ProducerName='فولاد خوزستان' and Quantity > 0 order by date", db_conn)
 if len(bb_) > 0:
     bb = pd.concat([bb, bb_], axis=0, ignore_index=True)
 bb = bb.groupby("date", as_index=False).sum(numeric_only=True)
@@ -577,9 +577,9 @@ bb["bb"] = bb["TotalPrice"]/bb["Quantity"]
 bb = bb[["date", "bb"]]
 
 concentrate = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and "
-                          "Category='1-49-477' and Quantity > 0 order by date", powerbi_database)
+                          "Category='1-49-477' and Quantity > 0 order by date", db_conn)
 concentrate_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-49-477' and "
-                           "Quantity > 0 order by date", powerbi_database)
+                           "Quantity > 0 order by date", db_conn)
 if len(concentrate_) > 0:
     concentrate = pd.concat([concentrate, concentrate_], axis=0, ignore_index=True)
 concentrate = concentrate.groupby("date", as_index=False).sum(numeric_only=True)
@@ -587,9 +587,9 @@ concentrate["concentrate"] = concentrate["TotalPrice"] / concentrate["Quantity"]
 concentrate = concentrate[["date", "concentrate"]]
 
 pellitized = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and "
-                         "Category='1-49-464' and Quantity > 0 order by date", powerbi_database)
+                         "Category='1-49-464' and Quantity > 0 order by date", db_conn)
 pellitized_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-49-464' and "
-                          "Quantity > 0 order by date", powerbi_database)
+                          "Quantity > 0 order by date", db_conn)
 if len(pellitized_) > 0:
     pellitized = pd.concat([pellitized, pellitized_], axis=0, ignore_index=True)
 pellitized = pellitized.groupby("date", as_index=False).sum(numeric_only=True)
@@ -597,9 +597,9 @@ pellitized["pellitized"] = pellitized["TotalPrice"] / pellitized["Quantity"]
 pellitized = pellitized[["date", "pellitized"]]
 
 dri = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and "
-                  "Category='1-97-452' and Quantity > 0 order by date", powerbi_database)
+                  "Category='1-97-452' and Quantity > 0 order by date", db_conn)
 dri_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-97-452' and "
-                   "Quantity > 0 order by date", powerbi_database)
+                   "Quantity > 0 order by date", db_conn)
 if len(dri_) > 0:
     dri = pd.concat([dri, dri_], axis=0, ignore_index=True)
 dri = dri.groupby("date", as_index=False).sum(numeric_only=True)
@@ -607,9 +607,9 @@ dri["dri"] = dri["TotalPrice"] / dri["Quantity"]
 dri = dri[["date", "dri"]]
 
 rebar = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and Category "
-                    "in ('1-1-6', '1-1-7', '1-1-21', '1-1-64') and Quantity > 0 order by date", powerbi_database)
+                    "in ('1-1-6', '1-1-7', '1-1-21', '1-1-64') and Quantity > 0 order by date", db_conn)
 rebar_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category in "
-                     "('1-1-6', '1-1-7', '1-1-21', '1-1-64') and Quantity > 0 order by date", powerbi_database)
+                     "('1-1-6', '1-1-7', '1-1-21', '1-1-64') and Quantity > 0 order by date", db_conn)
 if len(rebar_) > 0:
     rebar = pd.concat([rebar, rebar_], axis=0, ignore_index=True)
 rebar = rebar.groupby("date", as_index=False).sum(numeric_only=True)
@@ -617,9 +617,9 @@ rebar["rebar"] = rebar["TotalPrice"] / rebar["Quantity"]
 rebar = rebar[["date", "rebar"]]
 
 rebar_alloy = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and "
-                          "Category='1-1-2682' and Quantity > 0 order by date", powerbi_database)
+                          "Category='1-1-2682' and Quantity > 0 order by date", db_conn)
 rebar_alloy_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-1-2682' and "
-                           "Quantity > 0 order by date", powerbi_database)
+                           "Quantity > 0 order by date", db_conn)
 if len(rebar_alloy_) > 0:
     rebar_alloy = pd.concat([rebar_alloy, rebar_alloy_], axis=0, ignore_index=True)
 rebar_alloy = rebar_alloy.groupby("date", as_index=False).sum(numeric_only=True)
@@ -628,9 +628,9 @@ rebar_alloy = rebar_alloy[["date", "rebar_alloy"]]
 
 slab = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and "
                    "Category='1-1-152' and ProducerName='فولاد خوزستان' and Quantity > 0 order by date",
-                   powerbi_database)
+                   db_conn)
 slab_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-1-152' and "
-                    "ProducerName='فولاد خوزستان' and Quantity > 0 order by date", powerbi_database)
+                    "ProducerName='فولاد خوزستان' and Quantity > 0 order by date", db_conn)
 if len(slab_) > 0:
     slab = pd.concat([slab, slab_], axis=0, ignore_index=True)
 slab = slab.groupby("date", as_index=False).sum(numeric_only=True)
@@ -639,9 +639,9 @@ slab = slab[["date", "slab"]]
 
 hr = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and Category in "
                  "('1-1-9', '1-1-2520') and ProducerName='فولاد مبارکه اصفهان' and Quantity > 0 order by date",
-                 powerbi_database)
+                 db_conn)
 hr_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category in ('1-1-9', '1-1-2520') and "
-                  "ProducerName='فولاد مبارکه اصفهان' and Quantity > 0 order by date", powerbi_database)
+                  "ProducerName='فولاد مبارکه اصفهان' and Quantity > 0 order by date", db_conn)
 if len(hr_) > 0:
     hr = pd.concat([hr, hr_], axis=0, ignore_index=True)
 hr = hr.groupby("date", as_index=False).sum(numeric_only=True)
@@ -649,9 +649,9 @@ hr["hr"] = hr["TotalPrice"] / hr["Quantity"]
 hr = hr[["date", "hr"]]
 
 gr = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_historical] WHERE date > '1400/01/01' and Category in "
-                 "('1-1-17', '1-1-2521', '1-1-2522') and Quantity > 0 order by date", powerbi_database)
+                 "('1-1-17', '1-1-2521', '1-1-2522') and Quantity > 0 order by date", db_conn)
 gr_ = pd.read_sql("SELECT * FROM [nooredenadb].[ime].[ime_data_today] WHERE Category in "
-                  "('1-1-17', '1-1-2521', '1-1-2522') and Quantity > 0 order by date", powerbi_database)
+                  "('1-1-17', '1-1-2521', '1-1-2522') and Quantity > 0 order by date", db_conn)
 if len(gr_) > 0:
     gr = pd.concat([gr, gr_], axis=0, ignore_index=True)
 gr = gr.groupby("date", as_index=False).sum(numeric_only=True)
@@ -728,7 +728,7 @@ chart_df["unit"] = ["-"] * len(chart_df)
 
 names = chart_df["name"].unique().tolist()
 for n in tqdm(range(len(names))):
-    cursor_ = powerbi_database.cursor()
+    cursor_ = db_conn.cursor()
     cursor_.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{names[n]}'")
     cursor_.close()
 
@@ -740,7 +740,7 @@ commodities = ["کرک نوری جدید", "کرک شبندر جدید"]
 table = pd.DataFrame()
 for i in range(len(commodities)):
     df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] where "
-                     f"commodity='{commodities[i]}' ORDER BY [date]", powerbi_database)
+                     f"commodity='{commodities[i]}' ORDER BY [date]", db_conn)
     tmp = pd.DataFrame(data={
         "name": [df["commodity"].iloc[0]],
         "current_price": [df["price"].iloc[-1]],
@@ -752,7 +752,7 @@ for i in range(len(commodities)):
 
 for i in range(len(table)):
     name_ = table['name'].iloc[i]
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"UPDATE [nooredenadb].[commodity].[commodity_data_today] SET price={table['current_price'].iloc[i]}, "
                  f"price_change={table['current_change'].iloc[i]}, "
                  f"change_percent={table['current_change_percent'].iloc[i]} WHERE name='{name_}'")

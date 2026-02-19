@@ -2,15 +2,15 @@ import pandas as pd
 import requests as rq
 from tqdm import tqdm
 from time import sleep
-import random, database, warnings
+import random, warnings
 
 from tsetmc import tsetmc_api
 from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
-open_price_zero = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_history] where open_price=0 and trade_amount!=0 order by date", powerbi_database)
+db_conn = make_connection()
+open_price_zero = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_history] where open_price=0 and trade_amount!=0 order by date", db_conn)
 
 if len(open_price_zero) > 0:
     ids_ = open_price_zero["symbol_id"].unique().tolist()
@@ -25,7 +25,7 @@ if len(open_price_zero) > 0:
             if op_price == 0:
                 trd_amont = int(his_df[his_df["dEven"] == dates[d]].reset_index(drop=True, inplace=False)["zTotTran"].iloc[0])
                 if trd_amont == 0:
-                    crsr = powerbi_database.cursor()
+                    crsr = db_conn.cursor()
                     crsr.execute(f"UPDATE [nooredenadb].[tsetmc].[symbols_history] SET trade_amount=0, trade_volume=0, trade_value=0 WHERE symbol_id='{idx_}' and date={dates[d]};")
                     crsr.close()
                 else:
@@ -33,7 +33,7 @@ if len(open_price_zero) > 0:
                     sleep(random.randint(100, 301) / 100)
                     op_price = int(res.json()["closingPriceDaily"]["priceFirst"])
                     if op_price != 0:
-                        crsr = powerbi_database.cursor()
+                        crsr = db_conn.cursor()
                         crsr.execute(f"UPDATE [nooredenadb].[tsetmc].[symbols_history] SET open_price={op_price} WHERE symbol_id='{idx_}' and date={dates[d]};")
                         crsr.close()
                     else:
@@ -43,15 +43,15 @@ if len(open_price_zero) > 0:
                         res__ = res_[res_["canceled"] != 1]
                         if len(res__) > 0:
                             op_price = int(res__.sort_values("nTran", inplace=False, ignore_index=True)["pTran"].iloc[0])
-                            crsr = powerbi_database.cursor()
+                            crsr = db_conn.cursor()
                             crsr.execute(f"UPDATE [nooredenadb].[tsetmc].[symbols_history] SET open_price={op_price} WHERE symbol_id='{idx_}' and date={dates[d]};")
                             crsr.close()
                         else:
-                            crsr = powerbi_database.cursor()
+                            crsr = db_conn.cursor()
                             crsr.execute(f"UPDATE [nooredenadb].[tsetmc].[symbols_history] SET trade_amount=0, trade_volume=0, trade_value=0 WHERE symbol_id='{idx_}' and date={dates[d]};")
                             crsr.close()
             else:
-                crsr = powerbi_database.cursor()
+                crsr = db_conn.cursor()
                 crsr.execute(f"UPDATE [nooredenadb].[tsetmc].[symbols_history] SET open_price={op_price} WHERE symbol_id='{idx_}' and date={dates[d]};")
                 crsr.close()
 else:

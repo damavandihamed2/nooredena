@@ -11,7 +11,7 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 header = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/116.0.0.0 Safari/537.36"}
 
@@ -67,7 +67,7 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 header = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/116.0.0.0 Safari/537.36"}
 
@@ -78,8 +78,8 @@ header = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5
 # query_investing_companies = ("SELECT  *  FROM [nooredenadb].[tsetmc].[symbols] where active=1 and final_last_date > "
 #                              "20200101 and sector IN (56, 39) and ([total_share] * [final_price]) > 15e12")
 #
-# tsetmc_codal_mapper = pd.read_sql(query_tsetmc_codal_mapper, powerbi_database)
-# investing_companies = pd.read_sql(query_investing_companies, powerbi_database)
+# tsetmc_codal_mapper = pd.read_sql(query_tsetmc_codal_mapper, db_conn)
+# investing_companies = pd.read_sql(query_investing_companies, db_conn)
 #
 # companies = investing_companies[["symbol", "symbol_name", "symbol_id"]].merge(
 #     tsetmc_codal_mapper[["symbol_id", "company", "company_name", "company_id"]], on="symbol_id", how="left")

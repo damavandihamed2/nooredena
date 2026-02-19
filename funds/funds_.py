@@ -1,6 +1,5 @@
 import re
 import random
-import database
 import warnings
 import numpy as np
 import pandas as pd
@@ -9,6 +8,7 @@ from tqdm import tqdm
 from time import sleep
 from googlesearch import search
 
+from utils.database import make_connection
 
 
 def search_for_symbol(text: str):
@@ -35,8 +35,8 @@ def id_extract(my_string, pattern):
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = database.db_conn
-symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1", powerbi_database)
+db_conn = make_connection()
+symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1", db_conn)
 
 patterns = ["ParTree=151311&i=([0-9]{1,})", "instInfo/([0-9]{1,})", "InstInfo/([0-9]{1,})"]
 combined = "|".join(patterns)

@@ -36,13 +36,13 @@ def id_extract(my_string, pattern):
 warnings.filterwarnings("ignore")
 patterns = ["ParTree=151311&i=([0-9]{1,})", "instInfo/([0-9]{1,})", "InstInfo/([0-9]{1,})"]
 combined = "|".join(patterns)
-powerbi_database = database.db_conn
+db_conn = database.db_conn
 symbols = pd.read_sql(
     "SELECT [symbol], [symbol_name], [symbol_id] FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1",
-    powerbi_database)
+    db_conn)
 # funds_data = pd.read_excel("D:/database/funds and invesments/funds_data.xlsx")
 # database.insert_to_database(dataframe=funds_data, database_table="[nooredenadb].[funds].[funds_inv_trades_raw]")
-funds_data = pd.read_sql("SELECT * FROM [nooredenadb].[funds].[funds_inv_trades_raw]", powerbi_database)
+funds_data = pd.read_sql("SELECT * FROM [nooredenadb].[funds].[funds_inv_trades_raw]", db_conn)
 funds_data_buy = funds_data[["date", "company", "company_type", "symbol_name", "buy_value"]]
 funds_data_buy = funds_data_buy[funds_data_buy["buy_value"] > 0]
 funds_data_buy["action"] = 1

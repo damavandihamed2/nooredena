@@ -9,8 +9,8 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
-dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", powerbi_database)
+db_conn = make_connection()
+dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", db_conn)
 
 dataframe.drop(["inactivity_return", "value_diff_inactivity"], axis=1, inplace=True)
 dataframe["value_diff_passive"] /= 1e9

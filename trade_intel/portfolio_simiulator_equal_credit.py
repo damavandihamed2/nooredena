@@ -11,7 +11,7 @@ start_day = "1403/10/30"
 end_day = "1404/05/01"
 warnings.filterwarnings("ignore")
 one_day = jdatetime.timedelta(days=1)
-powerbi_database = make_connection()
+db_conn = make_connection()
 fixed_income_id = "3846143218462419"
 
 query1 = "SELECT trades_rayan.row_, trades_rayan.transactionDate as date, trades_rayan.remaining, " \
@@ -19,7 +19,7 @@ query1 = "SELECT trades_rayan.row_, trades_rayan.transactionDate as date, trades
          "(SELECT max(row_) as row__, transactionDate as date, broker_id FROM [nooredenadb].[brokers].[trades_rayan] " \
          "where transactionDate >= '1402/01/01' group by transactionDate, broker_id) as temp ON row__=row_ ORDER BY " \
          "date, broker_id"
-credits1 = pd.read_sql(query1, powerbi_database)
+credits1 = pd.read_sql(query1, db_conn)
 credits1.drop(columns=["row_"], inplace=True)
 
 query2 = "SELECT temp.row_, temp.broker_id, temp.date_, trades_tadbir_ledger.Remain as remaining FROM " \
@@ -27,11 +27,11 @@ query2 = "SELECT temp.row_, temp.broker_id, temp.date_, trades_tadbir_ledger.Rem
          "[nooredenadb].[brokers].[trades_tadbir_ledger] where TransactionDate >= '2023-03-21' and Description not " \
          "in ('سند اختتامیه', 'سند افتتاحیه مورخ {0}') group by substring(TransactionDate, 1, 10), broker_id) as " \
          "temp INNER JOIN [nooredenadb].[brokers].[trades_tadbir_ledger] ON temp.row_=trades_tadbir_ledger.row_"
-credits2 = pd.read_sql(query2, powerbi_database)
+credits2 = pd.read_sql(query2, db_conn)
 
 query3 = "SELECT [Jalali_1] as date, [Miladi] as date_ FROM [nooredenadb].[extra].[dim_date] " \
          "WHERE Jalali_1 >= '1402/01/01' AND Jalali_1 <= '1404/08/30' AND MWeekDay NOT IN ('Thursday', 'Friday')"
-dim_date = pd.read_sql(query3, powerbi_database)
+dim_date = pd.read_sql(query3, db_conn)
 dim_date["date_"] = dim_date["date_"].astype("str")
 
 credits2 = credits2.merge(dim_date, on="date_", how="left").drop(columns=["date_", "row_"], inplace=False)
@@ -68,18 +68,18 @@ capital_increase(CapChangeParams(amount=1_000_000,
 
 ################################################################################################
 
-dps_funds = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps_funds]", powerbi_database)
+dps_funds = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps_funds]", db_conn)
 dps_funds["date"] = dps_funds.apply(lambda row: jdatetime.datetime.fromgregorian(
     year=int(row["date"][:4]), month=int(row["date"][5:7]), day=int(row["date"][8:10])
 ).strftime("%Y/%m/%d") if row["date"] is not None else None, axis=1)
 
-dps = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps]", powerbi_database)
+dps = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps]", db_conn)
 for c in ['fiscal_year', 'date_time', 'announcement_date']:
     dps[c] = dps.apply(lambda row: jdatetime.datetime.fromgregorian(
         year=int(row[c][:4]), month=int(row[c][5:7]), day=int(row[c][8:10])
     ).strftime("%Y/%m/%d") if row[c] is not None else None, axis=1)
 
-capital_changes = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[capital_changes]", powerbi_database)
+capital_changes = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[capital_changes]", db_conn)
 for c in ['date', 'underwriting_end_date', 'registration_date', 'stock_certificate_receive_date', 'warrant_sell_date']:
     capital_changes[c] = capital_changes.apply(lambda row: jdatetime.datetime.fromgregorian(
         year=int(row[c][:4]), month=int(row[c][5:7]), day=int(row[c][8:10])
@@ -87,19 +87,19 @@ for c in ['date', 'underwriting_end_date', 'registration_date', 'stock_certifica
 
 ################################################################################################
 
-cashflow = pd.read_sql("SELECT * FROM [nooredenadb].[company].[cashflow]", powerbi_database)
+cashflow = pd.read_sql("SELECT * FROM [nooredenadb].[company].[cashflow]", db_conn)
 cashflow["due_date"] = [get_last_date(date_=cashflow["date"].iloc[i]) if ~cashflow["date"].isna().iloc[i] else np.nan
                         for i in range(len(cashflow))]
 cashflow["paid"] = False
 
-put_options = pd.read_sql("SELECT * FROM [nooredenadb].[sigma].[put_option]", powerbi_database)
+put_options = pd.read_sql("SELECT * FROM [nooredenadb].[sigma].[put_option]", db_conn)
 put_options["payday"] = [get_next_date(date_=put_options["maturity_date"].iloc[i]) for i in range(len(put_options))]
 put_options["done"] = False
 
-rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", powerbi_database)
+rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_conn)
 portfolio = pd.read_sql("SELECT [symbol], [type], [status], [amount], [total_cost], [final_price], [date] "
                         "FROM [nooredenadb].[sigma].[portfolio] WHERE date = (SELECT MAX(date) FROM "
-                        "[nooredenadb].[sigma].[portfolio] WHERE date < '1402/11/01')", powerbi_database)
+                        "[nooredenadb].[sigma].[portfolio] WHERE date < '1402/11/01')", db_conn)
 portfolio["type"].replace({"اختیار معامله | موقعیت فروش": "put_option", "اختیار معامله | موقعیت خرید": "call_option",
                            "صندوق": "fund", "سلف موازی": "forward_contract", "گواهی سپرده کالایی": "commodity_cd",
                            "حق تقدم": "ros", "اوراق": "bond", "سهام": "stock"}, inplace=True, regex=False)
@@ -115,9 +115,9 @@ portfolio = portfolio.merge(rahavard_symbols[["symbol", "asset_id"]].rename(
     {"symbol": "original_symbol"}, axis=1, inplace=False), on="original_symbol", how="left")
 portfolio_value_start = int((portfolio["amount"] * portfolio["final_price"]).sum())
 symbols = pd.read_sql("SELECT [symbol] as tse_symbol, [symbol_id] FROM [nooredenadb].[tsetmc].[symbols]",
-                      powerbi_database)
+                      db_conn)
 symbols_ros = pd.read_sql("SELECT [symbol_ros] as tse_symbol , [symbol_id] FROM [nooredenadb].[tsetmc].[symbols_ros]",
-                          powerbi_database)
+                          db_conn)
 portfolio["tse_symbol"] = portfolio["symbol"].replace(
     {"دارایکم": "دارا يكم"},regex=False, inplace=False).replace(
     {"ی": "ي", "ک": "ك"}, regex=True, inplace=False)
@@ -270,10 +270,10 @@ while True:
                                                on="tse_symbol", how="left")
     his_sym = pd.read_sql(f"SELECT [date], [symbol_id], [final_price] FROM [nooredenadb].[tsetmc].[symbols_history] "
                           f"WHERE symbol_id IN {str(tuple(syms_ids['symbol_id'].tolist())).replace(',)', ')')} AND "
-                          f"date = {today_g_} AND trade_amount > 0", powerbi_database)
+                          f"date = {today_g_} AND trade_amount > 0", db_conn)
     his_ros = pd.read_sql(f"SELECT [date], [symbol_id], [final_price] FROM [nooredenadb].[tsetmc].[symbols_ros_history] "
                           f"WHERE symbol_id IN {str(tuple(syms_ids['symbol_id'].tolist())).replace(',)', ')')} AND "
-                          f"date = {today_g_} AND trade_amount > 0", powerbi_database)
+                          f"date = {today_g_} AND trade_amount > 0", db_conn)
     history = pd.concat([his_sym, his_ros], axis=0, ignore_index=True)
 
     history_ = history.merge(syms_ids, on="symbol_id", how="left").drop_duplicates(
@@ -294,7 +294,7 @@ while True:
                 his_sym_tmp = pd.read_sql(
                     f"SELECT [date], [symbol_id], [final_price] FROM [nooredenadb].[tsetmc].[symbols_history] WHERE "
                     f"symbol_id IN {str(tuple(symbols_tmp['symbol_id'].tolist())).replace(',)', ')')} AND date = "
-                    f"{today_g_} AND trade_amount > 0", powerbi_database)
+                    f"{today_g_} AND trade_amount > 0", db_conn)
                 portfolio["final_price"].iloc[i] = his_sym_tmp["final_price"].iloc[0] - 1000
 
     portfolio.drop(columns="price", axis=1, inplace=True)

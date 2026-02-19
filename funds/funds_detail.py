@@ -1,12 +1,13 @@
 import warnings
 import requests
-import database
 import pandas as pd
 from tqdm import tqdm
 
+from utils.database import make_connection
+
 
 warnings.filterwarnings("ignore")
-powerbi_database = database.db_conn
+db_conn = make_connection()
 
 comp_headers = {
     'Accept': 'application/json, text/plain, */*',
@@ -84,8 +85,8 @@ fundspage = fundspage.astype({"fundSize": float, "dailyEfficiency": float, "week
                               'superUnitsTotalNetAssetValue': float, 'superTotalUnit': float,
                               'superUnitsTotalSubscription': float, 'superUnitsTotalCancel': float})
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("TRUNCATE TABLE [nooredenadb].[funds].[funds_detail_Data]")
 crsr.commit()
 crsr.close()
-database.insert_to_database(dataframe=fundspage, database_table="[nooredenadb].[funds].[funds_detail_Data]")
+db_conn.insert_to_database(dataframe=fundspage, database_table="[nooredenadb].[funds].[funds_detail_Data]")

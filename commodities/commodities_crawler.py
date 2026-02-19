@@ -21,12 +21,12 @@ urea_path, gas_path, sugar_path = ("D:/database/commodity/urea.xlsx", "D:/databa
 proxy = "127.0.0.1:10808"
 proxies = {'http': 'socks5://' + proxy,
            'https': 'socks5://' + proxy}
-powerbi_database = make_connection()
+db_conn = make_connection()
 today = jdatetime.datetime.today()
 today_g = today.togregorian().strftime("%Y-%m-%d")
 
 dim_date = pd.read_sql("SELECT TRY_CONVERT(VARCHAR, Miladi) as Miladi, REPLACE(Jalali_1, '/', '-') as date "
-                       "FROM [nooredenadb].[extra].[dim_date]", powerbi_database)
+                       "FROM [nooredenadb].[extra].[dim_date]", db_conn)
 
 #######################################################################################################################
 
@@ -39,7 +39,7 @@ gas = gas.merge(dim_date.rename({"date": "date_jalali", "Miladi": "date"}, axis=
 gas[["owner", "commodity", "unit", "reference"]] = ["razmehgir", "گاز خوراک", "دلار بر مترمکعب", "وزارت نفت"]
 gas["name"] = gas["commodity"] + " - " + gas["reference"] + " (" + gas["unit"] + ")"
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE owner='razmehgir' AND "
              "commodity='گاز خوراک' AND unit='دلار بر مترمکعب' AND reference='وزارت نفت'")
 crsr.close()
@@ -63,12 +63,12 @@ query_banks_data = ("SELECT temp3.reference, temp3.price, temp3.commodity, temp3
                     "(SELECT try_convert(varchar, Miladi) as date, REPLACE(Jalali_1, '/', '-') AS date_jalali "
                     "FROM [nooredenadb].[extra].[dim_date]) as temp2 on temp1.date_jalali=temp2.date_jalali) AS temp4 "
                     "on temp3.fiscalYear=temp4.fiscalYear AND temp3.fiscalMonth=temp4.fiscalMonth")
-banks_data = pd.read_sql(query_banks_data, powerbi_database)
+banks_data = pd.read_sql(query_banks_data, db_conn)
 banks_data["reference"].replace({"ي": "ی", "ك": "ک"}, inplace=True, regex=True)
 banks_data["price"] *= 100
 banks_data["name"] = banks_data["commodity"] + " - " + banks_data["reference"] + " (" + banks_data["unit"] + ")"
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity IN ('اسپرد عملیات اصلی', 'نرخ موثر درآمد تسهیلات', 'هزینه موثر سپرده')")
 crsr.close()
 insert_to_database(dataframe=banks_data, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -76,11 +76,11 @@ insert_to_database(dataframe=banks_data, database_table="[nooredenadb].[commodit
 #######################################################################################################################
 
 query_amar_center_data = "SELECT * FROM [nooredenadb].[economic].[commodities_amar_centre]"
-amar_center_data = pd.read_sql(query_amar_center_data, powerbi_database)
+amar_center_data = pd.read_sql(query_amar_center_data, db_conn)
 amar_center_data["name"] = (amar_center_data["commodity"] + " - " + amar_center_data["reference"] + " (" +
                             amar_center_data["unit"] + ")")
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE owner='jahanshahi'")
 crsr.close()
 insert_to_database(dataframe=amar_center_data, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -90,7 +90,7 @@ insert_to_database(dataframe=amar_center_data, database_table="[nooredenadb].[co
 enigma_agent = enigma.EnigmaAgent(username=authenticator[0]["username"], password=authenticator[0]["password"])
 enigma_agent.login()
 
-cmdt_raw = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_data]", powerbi_database)
+cmdt_raw = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_data]", db_conn)
 cmdt = cmdt_raw[cmdt_raw["id"] != "-"]
 temporary_df = pd.DataFrame()
 for i in tqdm(range(len(cmdt))):
@@ -182,7 +182,7 @@ complete_df = complete_df.merge(
 complete_df["price"] = complete_df["price"].astype(dtype="float")
 
 max_dates = pd.read_sql("SELECT MAX(date) AS maxdate, [name] FROM [nooredenadb].[commodity].[commodities_data] "
-                        "GROUP BY [name]", powerbi_database)
+                        "GROUP BY [name]", db_conn)
 complete_df = complete_df.merge(max_dates, on="name", how="left")
 complete_df["maxdate"].fillna("0", inplace=True)
 
@@ -237,7 +237,7 @@ query_oilprice = ""
 for i in range(len(oil_price_dataframe_mindate)):
     query_oilprice += (f"(name='{oil_price_dataframe_mindate["name"].iloc[i]}' AND "
                        f"date>='{oil_price_dataframe_mindate["date"].iloc[i]}') OR ")
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE " + query_oilprice[: -4])
 crsr.close()
 insert_to_database(dataframe=oil_price_dataframe, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -266,7 +266,7 @@ data = pd.melt(data, id_vars=["date_jalali", "date"], var_name="commodity", valu
 data[["owner", "unit", "reference"]] = ["maleklou", "دلار بر تن", "isfs.ir"]
 data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit"] + ")"
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity "
              f"IN ('شکر خام نيويورک', 'شکر سفيد لندن') AND owner='maleklou' AND "
              f"reference='isfs.ir' AND date>='{data['date'].min()}'")
@@ -282,7 +282,7 @@ table = pd.DataFrame()
 for i in range(len(commodities)):
     df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] "
                      f"where name='{commodities[i]}' ORDER BY [date]",
-                     powerbi_database)
+                     db_conn)
     tmp = pd.DataFrame(data={
         "name": [df["commodity"].iloc[0]],
         "current_price": [df["price"].iloc[-1]],
@@ -294,7 +294,7 @@ for i in range(len(commodities)):
 
 for i in range(len(table)):
     name_ = table['name'].iloc[i]
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"UPDATE [nooredenadb].[commodity].[commodity_data_today] SET price={table['current_price'].iloc[i]}, "
                  f"price_change={table['current_change'].iloc[i]}, "
                  f"change_percent={table['current_change_percent'].iloc[i]} WHERE name='{name_}'")
@@ -304,7 +304,7 @@ for i in range(len(table)):
 
 response = rq.get("https://itpnews.com/persian/")
 # php_session_id = response.headers["set-cookie"].split(";")[0]
-itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_itpnews_detail_data]", powerbi_database)
+itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_itpnews_detail_data]", db_conn)
 
 from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=10)).strftime("%Y/%m/%d")
 to_d = jdatetime.datetime.today().strftime("%Y/%m/%d")
@@ -341,7 +341,7 @@ cmdty_df["name"] = cmdty_df["commodity"] + " - " + cmdty_df["reference"] + " (" 
 cmdty_df.drop_duplicates(subset=["commodity", "date"], keep="first", ignore_index=True, inplace=True)
 
 try:
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
                  f"date_jalali>='{from_d.replace('/', '-')}' AND reference='itpnews'")
     crsr.close()
@@ -364,7 +364,7 @@ data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit
 data = data[data["date_jalali"] >= from_d].reset_index(drop=True, inplace=False)
 
 if len(data) > 0:
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
                  f"date_jalali >='{from_d}' AND commodity='گندم / بازار آمریکا'")
     crsr.close()
@@ -407,7 +407,7 @@ if len(data) > 0:
 #
 # wci_last_date = pd.read_sql("SELECT MAX(date) as date FROM [nooredenadb].[commodity].[commodities_data] WHERE "
 #                             "owner='shayan' AND unit='دلار بر کانتینر' AND reference='macromicro.me'",
-#                             powerbi_database)["date"].iloc[0]
+#                             db_conn)["date"].iloc[0]
 # wci_df = wci_df[wci_df["date"] > wci_last_date].reset_index(drop=True, inplace=False)
 # if len(wci_df) > 0:
 #     insert_to_database(dataframe=wci_df, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -453,7 +453,7 @@ if len(data) > 0:
 # df_[["owner", "unit", "reference"]] = ["shayan", "دلار بر کانتینر", "macromicro.me"]
 # df_["name"] = df_["commodity"] + " - " + df_["reference"] + " (" + df_["unit"] + ")"
 #
-# crsr = powerbi_database.cursor()
+# crsr = db_conn.cursor()
 # crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
 #              "owner='shayan' AND unit='دلار بر کانتینر' AND reference='macromicro.me'")
 # crsr.close()

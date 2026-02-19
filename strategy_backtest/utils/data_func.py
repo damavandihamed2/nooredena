@@ -150,10 +150,10 @@ def get_asset_history_database(
 
 def get_asset_history(asset_id: str, adj_price: bool = False):
     if db_conn_check():
-        powerbi_database_public = database.powerbi_database_public
+        db_conn_public = database.db_conn_public
         history = get_asset_history_database(
             asset_id=asset_id,
-            db_conn=powerbi_database_public,
+            db_conn=db_conn_public,
             adj_price=adj_price
         )
     else:
@@ -176,7 +176,7 @@ def get_index_symbols(index_id: str) -> pd.DataFrame :
 ##################################################
 
 def get_symbols_data() -> pd.DataFrame:
-    db_conn = database.powerbi_database_public
+    db_conn = database.db_conn_public
     q_ = ("SELECT symbol, symbol_id, sector, flow, flow_name, yval, total_share, final_price, "
           "(total_share * final_price) AS market_cap FROM [nooredenadb].[tsetmc].[symbols] "
           "WHERE active=1 AND final_last_date >= 20250601")

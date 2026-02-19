@@ -37,7 +37,7 @@ def adj_final_price_date(dataframe, date):
     return price
 
 
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 #######################################################################################################################
 
@@ -56,7 +56,7 @@ for i in range(len(names)):
     if symbol[0] not in ["ض", "ط"]:
         while True:
             try:
-                s = pd.read_sql(f"SELECT [date],[symbol],[final_price],[yesterday_price] FROM [nooredenadb].[tsetmc].[stock_historical_data] where symbol=('{symbol}')", powerbi_database)
+                s = pd.read_sql(f"SELECT [date],[symbol],[final_price],[yesterday_price] FROM [nooredenadb].[tsetmc].[stock_historical_data] where symbol=('{symbol}')", db_conn)
                 if s is None:
                     break
                 if len(s) == 0:

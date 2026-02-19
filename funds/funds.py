@@ -1,12 +1,13 @@
 import os
-import database
 import warnings
 import pandas as pd
 
+from utils.database import make_connection
+
 
 warnings.filterwarnings("ignore")
-powerbi_database = database.db_conn
-symbols_detail_data = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_detail_data]", powerbi_database)
+db_conn = make_connection()
+symbols_detail_data = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_detail_data]", db_conn)
 
 
 def get_sheet_name(filepath):
@@ -190,7 +191,7 @@ df.dropna(subset=first_col, axis=0, inplace=True, ignore_index=True)
 
 ###################################################################################################
 
-symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_detail_data]", powerbi_database)
+symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_detail_data]", db_conn)
 symbols = symbols[["symbol", "sector_name"]]
 symbols.rename(mapper={"symbol": "نماد", "sector_name": "صنعت"}, axis=1, inplace=True)
 dd = pd.read_excel("C:/Users/damavandi/Desktop/chemicals.xlsx")

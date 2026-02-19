@@ -8,10 +8,10 @@ from rahavard.rahavard365 import Agent, Asset
 from utils.database import make_connection, insert_to_database
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 portfolio = pd.read_excel(r"C:\Users\damavandi.nooredena\Desktop\old desktop\هوشمندی معاملات\portfolio(1402-10-30).xlsx")
-rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", powerbi_database)
+rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_conn)
 
 portfolio_ = portfolio.merge(rahavard_symbols[["symbol", "slug", "asset_id", "type"]], on="symbol", how="left")
 

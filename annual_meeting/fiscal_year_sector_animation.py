@@ -8,17 +8,17 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 (fnt, color1, color2) = ("B Nazanin", "#56c4cd", "#f8a81d")
 colors = px.colors.qualitative.Alphabet
 bar_numbers = 15
 
-dim_date = pd.read_sql("SELECT [Jalali_1] as date, [JWeekDay] FROM [nooredenadb].[extra].[dim_date]", powerbi_database)
+dim_date = pd.read_sql("SELECT [Jalali_1] as date, [JWeekDay] FROM [nooredenadb].[extra].[dim_date]", db_conn)
 query_sector_value = ("SELECT date, SUM(value) AS value, sector FROM (SELECT [date], [gross_value_final_price] AS "
                       "value, CASE WHEN symbol = 'دارایکم' THEN 'بانکها و موسسات اعتباری' WHEN symbol = 'گنگین' THEN"
                       " 'چندرشته ای صنعتی' ELSE sector END AS [sector] FROM [nooredenadb].[sigma].[sigma_portfolio] WHERE "
                       "date>='1402/10/30' AND date<'1403/11/01') AS TEMP GROUP BY date, sector ORDER BY date")
-sector_value = pd.read_sql(query_sector_value, powerbi_database)
+sector_value = pd.read_sql(query_sector_value, db_conn)
 sectors_mapper = {
     'ماشین آلات و تجهیزات': "ماشین آلات",
     'بانکها و موسسات اعتباری': "بانک ها",

@@ -8,7 +8,7 @@ from utils.database import make_connection
 from annual_meeting.utils.data import get_trades_value
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 (fnt, color1, color2) = ("B Nazanin", "#56c4cd", "#f8a81d")
 
 market_start_date = 20250120
@@ -27,8 +27,8 @@ query_symbols_ros = ("SELECT market_trade_value, date FROM (SELECT date as date_
                      "date FROM [nooredenadb].[extra].[dim_date]) AS TEMP2 "
                      "ON TEMP1.date_=TEMP2.date_")
 
-symbols_trade_value = pd.read_sql(query_symbols, powerbi_database)
-symbols_ros_trade_value = pd.read_sql(query_symbols_ros, powerbi_database)
+symbols_trade_value = pd.read_sql(query_symbols, db_conn)
+symbols_ros_trade_value = pd.read_sql(query_symbols_ros, db_conn)
 market_trade_value = pd.concat([symbols_trade_value, symbols_ros_trade_value], axis=0, ignore_index=True)
 market_trade_value = market_trade_value.groupby(by="date", as_index=False).sum()
 market_trade_value = market_trade_value[market_trade_value["market_trade_value"] > 0].reset_index(
@@ -48,7 +48,7 @@ dataframe["portfolio_trade_value"] /= 1e9
 
 
 dim_date = pd.read_sql("SELECT [Jalali_1] as date, [jyear], [JWeekNum] FROM [nooredenadb].[extra].[dim_date] "
-                       , powerbi_database)
+                       , db_conn)
 dim_date["jyear"] = dim_date["jyear"].astype(int)
 dataframe_weekly = dataframe.copy()
 dataframe_weekly = dataframe_weekly.merge(dim_date, on="date", how="left")

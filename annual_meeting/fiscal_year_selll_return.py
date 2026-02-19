@@ -5,7 +5,7 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 (fnt, color1, color2) = ("B Nazanin", "#56c4cd", "#f8a81d")
 
 sells_start_date = "1403/05/07"
@@ -15,12 +15,12 @@ query_sells = ("SELECT symbol, date, SUM(net_value) as value FROM [nooredenadb].
                f" WHERE date>='{sells_start_date}' AND date<='{sells_end_date}' AND symbol NOT IN "
                "('اعتماد', 'کارا', 'افران', 'لبخند', 'سپر', 'یاقوت') AND type"
                "!='اختیار معامله'  GROUP BY date, symbol ORDER BY date")
-sells = pd.read_sql(query_sells, powerbi_database)
+sells = pd.read_sql(query_sells, db_conn)
 sells = sells[sells["symbol"] != "وشهرح"].reset_index(drop=True, inplace=False)
 sells["symbol"].replace({"ک": "ك", "ی": "ي"}, regex=True, inplace=True)
 sell_symbols = sells["symbol"].unique().tolist()
 symbols = pd.read_sql(f"SELECT * FROM [nooredenadb].[tsetmc].[symbols] WHERE symbol IN {str(tuple(sell_symbols))} "
-                      f"AND active=1", powerbi_database)
+                      f"AND active=1", db_conn)
 
 sell_symbols_id = symbols["symbol_id"].values.tolist()
 query_symbols_history = (f"SELECT TEMP2.date, TEMP1.symbol_id, TEMP1.yesterday_price, TEMP1.final_price FROM (SELECT "
@@ -29,7 +29,7 @@ query_symbols_history = (f"SELECT TEMP2.date, TEMP1.symbol_id, TEMP1.yesterday_p
                          f"{str(tuple(sell_symbols_id))} AND trade_amount>0) AS TEMP1 LEFT JOIN (SELECT "
                          f"TRY_CONVERT(INT, REPLACE([Miladi], '-', '')) AS Miladi, [Jalali_1] as date FROM "
                          f"[nooredenadb].[extra].[dim_date]) AS TEMP2 ON TEMP1.Miladi=TEMP2.Miladi")
-symbols_history = pd.read_sql(query_symbols_history, powerbi_database)
+symbols_history = pd.read_sql(query_symbols_history, db_conn)
 symbols_history.sort_values(by=["symbol_id", "date"], inplace=True, ignore_index=True, ascending=False)
 
 symbols_history["shifted"] = symbols_history.groupby(by="symbol_id", as_index=False).shift(-1)["final_price"]

@@ -12,8 +12,8 @@ from utils.database import make_connection
 
 warnings.filterwarnings("ignore")
 _dash_renderer._set_react_version("18.2.0")
-powerbi_database = make_connection()
-dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", powerbi_database)
+db_conn = make_connection()
+dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", db_conn)
 dataframe["value_diff_inactivity"] /= 1e9
 dataframe["value_diff_passive"] /= 1e9
 dataframe.rename(mapper={

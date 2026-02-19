@@ -8,9 +8,9 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
-msg_last = pd.read_sql("select * from [nooredenadb].[extra].[msg_last]", powerbi_database)
+msg_last = pd.read_sql("select * from [nooredenadb].[extra].[msg_last]", db_conn)
 today = jdatetime.datetime.today()
 today_ = today.strftime("%Y/%m/%d")
 today_g = (datetime.datetime.today().strftime(format="%Y%m%d"))
@@ -122,7 +122,7 @@ for i in range(len(flows)):
     if len(df) > 0:
         if today_g > msg_last["last_date"].iloc[msg_last.index[msg_last["flow"] == flow].values[0]]:
             msg_df = pd.concat([msg_df, df], axis=0, ignore_index=True)
-            cursor = powerbi_database.cursor()
+            cursor = db_conn.cursor()
             cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = {max(df['dEven'])} WHERE flow='{flow}';")
             cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(df['hEven'])} WHERE flow='{flow}';")
             cursor.commit()
@@ -132,7 +132,7 @@ for i in range(len(flows)):
             df = df[df["hEven"] > msg_last["last_time"].iloc[msg_last.index[msg_last["flow"] == flow].values[0]]]
             if len(df) > 0:
                 msg_df = pd.concat([msg_df, df], axis=0, ignore_index=True)
-                cursor = powerbi_database.cursor()
+                cursor = db_conn.cursor()
                 cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(df['hEven'])} WHERE flow='{flow}';")
                 cursor.commit()
                 cursor.close()
@@ -167,7 +167,7 @@ items["hEven"] = [(datetime.datetime.strftime(items["date"].iloc[i], format="%H%
 items = items[items["dEven"] == today_g]
 if len(items) > 0:
     if today_g > msg_last["last_date"].iloc[msg_last.index[msg_last["flow"] == "boursenews"].values[0]]:
-        cursor = powerbi_database.cursor()
+        cursor = db_conn.cursor()
         cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = {max(items['dEven'])} WHERE flow='boursenews';")
         cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(items['hEven'])} WHERE flow='boursenews';")
         cursor.commit()
@@ -176,7 +176,7 @@ if len(items) > 0:
     else:
         items = items[items["hEven"] > msg_last["last_time"].iloc[msg_last.index[msg_last["flow"] == "boursenews"].values[0]]]
         if len(items) > 0:
-            cursor = powerbi_database.cursor()
+            cursor = db_conn.cursor()
             cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(items['hEven'])} WHERE flow='boursenews';")
             cursor.commit()
             cursor.close()
@@ -214,7 +214,7 @@ items["hEven"] = [datetime.datetime.strptime(items["pubDate"].iloc[i][11:], "%I:
 items = items[items["dEven"] == today_g]
 if len(items) > 0:
     if today_g > msg_last["last_date"].iloc[msg_last.index[msg_last["flow"] == "ifb"].values[0]]:
-        cursor = powerbi_database.cursor()
+        cursor = db_conn.cursor()
         cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = {max(items['dEven'])} WHERE flow='ifb';")
         cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(items['hEven'])} WHERE flow='ifb';")
         cursor.commit()
@@ -223,7 +223,7 @@ if len(items) > 0:
     else:
         items = items[items["hEven"] > msg_last["last_time"].iloc[msg_last.index[msg_last["flow"] == "ifb"].values[0]]]
         if len(items) > 0:
-            cursor = powerbi_database.cursor()
+            cursor = db_conn.cursor()
             cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(items['hEven'])} WHERE flow='ifb';")
             cursor.commit()
             cursor.close()
@@ -260,7 +260,7 @@ items = items[items["category"] != "دیگر رسانه ها"]
 items = items[items["dEven"] == today_g]
 if len(items) > 0:
     if today_g > msg_last["last_date"].iloc[msg_last.index[msg_last["flow"] == "boursepress"].values[0]]:
-        cursor = powerbi_database.cursor()
+        cursor = db_conn.cursor()
         cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = {max(items['dEven'])} WHERE flow='boursepress';")
         cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(items['hEven'])} WHERE flow='boursepress';")
         cursor.commit()
@@ -269,7 +269,7 @@ if len(items) > 0:
     else:
         items = items[items["hEven"] > msg_last["last_time"].iloc[msg_last.index[msg_last["flow"] == "boursepress"].values[0]]]
         if len(items) > 0:
-            cursor = powerbi_database.cursor()
+            cursor = db_conn.cursor()
             cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = {max(items['hEven'])} WHERE flow='boursepress';")
             cursor.commit()
             cursor.close()
@@ -330,7 +330,7 @@ items = items[items["id"] > msg_last["last_date"].iloc[msg_last.index[msg_last["
 
 if len(items) > 0:
     items["date"] = items["year"] + ["/"] + items["month"] + ["/"] + items["day"]
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = {max(items['id'])} WHERE flow='bourse24';")
     cursor.commit()
     cursor.close()
@@ -366,7 +366,7 @@ items["time"] = [g_to_jalali(items["pubDate"].iloc[i])[1] for i in range(len(ite
 items = items[items["id"] > msg_last["last_date"].iloc[msg_last.index[msg_last["flow"] == "donya-e-eqtesad"].values[0]]]
 
 if len(items) > 0:
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = {max(items['id'])} WHERE flow='donya-e-eqtesad';")
     cursor.commit()
     cursor.close()
@@ -395,7 +395,7 @@ if len(items) > 0:
 """
 """
 def insert_to_database(dataframe, database_table):
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     db_table = database_table
     if len(dataframe) // 1000 != 0:
         lup = len(dataframe) // 1000
@@ -437,7 +437,7 @@ insert_to_database(pd.DataFrame(data={"flow": ["donya-e-eqtesad"],
 
 
 fow = "boursepress"
-cursor = powerbi_database.cursor()
+cursor = db_conn.cursor()
 cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_date = '20230625' WHERE flow='{fow}';")
 cursor.execute(f"UPDATE [nooredenadb].[extra].[msg_last] SET last_time = '112659' WHERE flow='{fow}';")
 cursor.commit()

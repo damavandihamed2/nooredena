@@ -8,7 +8,7 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 
 fnt = "B Nazanin"
@@ -43,7 +43,7 @@ def make_swap_figs(symbol_sell, symbol_buy, swap_date, yaxis_range, name):
                      f"('{symbol_buy}', '{symbol_sell}') AND active=1) AS TEMP2 ON TEMP1.symbol_id=TEMP2.symbol_id JOIN (SELECT "
                      "TRY_CONVERT(INT, REPLACE([Miladi], '-', '')) AS mdate, [Jalali_1] AS date FROM "
                      "[nooredenadb].[extra].[dim_date]) AS TEMP3 ON TEMP1.mdate=TEMP3.mdate) AS TEMP4")
-    symbols = pd.read_sql(query_symbols, powerbi_database)
+    symbols = pd.read_sql(query_symbols, db_conn)
     symbols = symbols[symbols["date"] >= "1402/11/01"].sort_values(by=["symbol", "date"], ascending=True, ignore_index=True, inplace=False)
     symbols_base_price = pd.DataFrame({"symbol": [symbol_sell, symbol_buy], "date": [swap_date, swap_date]}).merge(symbols, on=["symbol", "date"], how="left").rename({"adj_final_price": "base_price"}, axis=1, inplace=False)[["symbol", "base_price"]]
     symbols_ = symbols.merge(symbols_base_price, on=["symbol"], how="left")

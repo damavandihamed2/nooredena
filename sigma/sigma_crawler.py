@@ -6,7 +6,7 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 authenticator = [{"username": "damavandi", "password": "Dd@123456"}]
 today_ = jdatetime.datetime.now().strftime(format="%Y/%m/%d")
 one_day = jdatetime.timedelta(days=1)
@@ -65,7 +65,7 @@ agent.login()
 for pid in [1, 25]:
     portfoId = pid
     last_buysell = pd.read_sql(f"select max(date) date FROM [nooredenadb].[sigma].[buysell] "
-                               f"WHERE portfolio_id={portfoId}", powerbi_database)["date"].iloc[0]
+                               f"WHERE portfolio_id={portfoId}", db_conn)["date"].iloc[0]
     start_buysell = (jdatetime.datetime.strptime(last_buysell, format="%Y/%m/%d") + one_day).strftime("%Y/%m/%d")
 
     buysell_data = agent.get_buysell(start_date=start_buysell, end_date=today_, portfolio_id=portfoId)
@@ -86,7 +86,7 @@ for pid in [1, 25]:
 for pid in [1, 25]:
     portfoId = pid
     last_profitloss = pd.read_sql(f"select max(date) date FROM [nooredenadb].[sigma].[profitloss] "
-                                  f"WHERE portfolio_id={portfoId}", powerbi_database)["date"].iloc[0]
+                                  f"WHERE portfolio_id={portfoId}", db_conn)["date"].iloc[0]
     if last_profitloss:
         start_profitloss = (jdatetime.datetime.strptime(last_profitloss, format="%Y/%m/%d") + one_day).strftime("%Y/%m/%d")
     else:
@@ -106,13 +106,13 @@ for pid in [1, 25]:
 for pid in [1, 25]:
     portfoId = pid
     last_portfolio = pd.read_sql(f"SELECT MAX(date) date FROM [nooredenadb].[sigma].[portfolio] "
-                                 f"WHERE portfolio_id={portfoId}", powerbi_database)["date"].iloc[0]
+                                 f"WHERE portfolio_id={portfoId}", db_conn)["date"].iloc[0]
     if last_portfolio:
         start_portfolio = (jdatetime.datetime.strptime(last_portfolio, format="%Y/%m/%d") + one_day).strftime("%Y/%m/%d")
     else:
         start_portfolio = "1404/01/01"
     end_portfolio = pd.read_sql(f"SELECT MAX(date) date FROM [nooredenadb].[sigma].[buysell] "
-                                f"WHERE portfolio_id={portfoId}", powerbi_database)["date"].iloc[0]
+                                f"WHERE portfolio_id={portfoId}", db_conn)["date"].iloc[0]
 
     if end_portfolio >= start_portfolio:
         portfolio = pd.DataFrame()
@@ -137,11 +137,11 @@ for pid in [1, 25]:
 for pid in [1, 25]:
     portfoId = pid
     lst_dividend = pd.read_sql(f"SELECT MAX(meeting_date) date FROM [nooredenadb].[sigma].[dividend] "
-                               f"WHERE portfolio_id={portfoId}", powerbi_database)["date"].iloc[0]
+                               f"WHERE portfolio_id={portfoId}", db_conn)["date"].iloc[0]
     if not lst_dividend:
         lst_dividend = "1404/01/01"
     end_dividend = pd.read_sql(f"SELECT MAX(date) date FROM [nooredenadb].[sigma].[portfolio] "
-                               f"WHERE portfolio_id={portfoId}", powerbi_database)["date"].iloc[0]
+                               f"WHERE portfolio_id={portfoId}", db_conn)["date"].iloc[0]
 
     dividend_data = agent.get_dividend(start_date=lst_dividend, end_date=end_dividend, portfolio_id=portfoId)
     dividend_df = pd.DataFrame(dividend_data)
@@ -152,7 +152,7 @@ for pid in [1, 25]:
     dividend_df = dividend_df[dividend_df["meeting_date"] >= lst_dividend].reset_index(drop=True, inplace=False)
 
     if len(dividend_df) > 0:
-        crsr = powerbi_database.cursor()
+        crsr = db_conn.cursor()
         crsr.execute(f"DELETE FROM [nooredenadb].[sigma].[dividend] "
                      f"WHERE portfolio_id={portfoId} AND meeting_date >= '{lst_dividend}'")
         crsr.close()

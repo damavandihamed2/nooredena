@@ -10,7 +10,7 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 
 res = rq.get("https://cdn.tsetmc.com/api/ClosingPrice/GetClosingPriceDailyList/68635710163497089/0",
@@ -21,7 +21,7 @@ res["date"] = [jdatetime.datetime.fromgregorian(
     month=int(res["dEven"].iloc[i] % 10000 // 100),
     day=int(res["dEven"].iloc[i] % 100)).strftime(format("%Y/%m/%d")) for i in range(len(res))]
 
-dates = pd.read_sql("SELECT DISTINCT(date) FROM [nooredenadb].[extra].[sigma_portfolio] ORDER BY date", powerbi_database)
+dates = pd.read_sql("SELECT DISTINCT(date) FROM [nooredenadb].[extra].[sigma_portfolio] ORDER BY date", db_conn)
 dates["d"] = [dates["date"].iloc[i][:-3] for i in range(len(dates))]
 months = dates.groupby(by="d", as_index=False).max()
 
@@ -29,7 +29,7 @@ sectors_df = pd.DataFrame()
 for m in range(len(months)):
 
     date = months["date"].iloc[m]
-    portfolio = pd.read_sql(f"SELECT * FROM [nooredenadb].[extra].[sigma_portfolio] WHERE date='{date}'", powerbi_database)
+    portfolio = pd.read_sql(f"SELECT * FROM [nooredenadb].[extra].[sigma_portfolio] WHERE date='{date}'", db_conn)
     portfolio = portfolio[portfolio["sector"] != "ابزار پزشکی"]
     portfolio = portfolio[~portfolio["type"].isin(["اختیار معامله", "اختیار معامله | موقعیت خرید", "اختیار معامله | موقعیت فروش"])]
     portfolio = portfolio[["symbol", "sector", "amount", "total_cost", "final_price", "date"]]

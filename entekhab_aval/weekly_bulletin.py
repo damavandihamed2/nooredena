@@ -9,12 +9,12 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 authenticator = [{"username": "09210882478", "password": "MMR123456"}]
 
 query_dim_date = ("SELECT TRY_CONVERT(INT, REPLACE(Miladi, '-', '')) deven, TRY_CONVERT(VARCHAR, Miladi) date_m, "
                   "Jalali_1, REPLACE(Jalali_1, '/', '-') date FROM [nooredenadb].[extra].[dim_date]")
-dim_date = pd.read_sql(query_dim_date, powerbi_database)
+dim_date = pd.read_sql(query_dim_date, db_conn)
 
 ##################################################
 
@@ -26,7 +26,7 @@ query_market_option = ("SELECT TEMP1.date,TEMP1.market_trade_volume,TEMP1.market
                        "IN (1, 2) GROUP BY date) AS TEMP1 JOIN (SELECT date,SUM(trade_volume) AS option_trade_volume, "
                        "SUM(trade_value) AS option_trade_value FROM [nooredenadb].[tsetmc].[symbols_data_daily] WHERE yval"
                        " IN (311,312,320,321) GROUP BY date) AS TEMP2 ON TEMP1.date=TEMP2.date")
-market_option = pd.read_sql(query_market_option, powerbi_database)
+market_option = pd.read_sql(query_market_option, db_conn)
 
 query_market_option_today = ("SELECT TEMP1.date,TEMP1.market_trade_volume,TEMP1.market_trade_value,"
                              "TEMP2.option_trade_volume,TEMP2.option_trade_value FROM (SELECT date,SUM(trade_volume) AS"
@@ -37,7 +37,7 @@ query_market_option_today = ("SELECT TEMP1.date,TEMP1.market_trade_volume,TEMP1.
                              "date,SUM(trade_volume) AS option_trade_volume,SUM(trade_value) AS option_trade_value "
                              "FROM [nooredenadb].[tsetmc].[symbols_data_today] WHERE yval IN (311,312,320,321) "
                              "GROUP BY date) AS TEMP2 ON TEMP1.date=TEMP2.date")
-market_option_today = pd.read_sql(query_market_option_today, powerbi_database)
+market_option_today = pd.read_sql(query_market_option_today, db_conn)
 market_option = pd.concat([market_option, market_option_today], axis=0, ignore_index=True).drop_duplicates(
     subset="date", keep="last", inplace=False, ignore_index=True)
 
@@ -45,17 +45,17 @@ market_option = pd.concat([market_option, market_option_today], axis=0, ignore_i
 
 total_idx_his = pd.read_sql("SELECT date, final as total_index FROM [nooredenadb].[tsetmc].[sector_historical_data]"
                                   " where sector_id='32097828799138957' and date>='1395-01-01' order by date",
-                                  powerbi_database)
+                            db_conn)
 total_idx_today = pd.read_sql("SELECT date, total_index FROM [nooredenadb].[tsetmc].[market_data_today]",
-                                powerbi_database)
+                              db_conn)
 total_idx_his = pd.concat([total_idx_his, total_idx_today], axis=0, ignore_index=True
                                 ).drop_duplicates(subset="date", keep="last", inplace=False, ignore_index=True)
 
 total_eq_idx_his = pd.read_sql("SELECT date, final as total_index_equal FROM [nooredenadb].[tsetmc]."
                                         "[sector_historical_data] WHERE sector_id = '67130298613737946' and date >= "
-                                        "'1395-01-01' ORDER BY date", powerbi_database)
+                                        "'1395-01-01' ORDER BY date", db_conn)
 total_eq_idx_today = pd.read_sql("SELECT date, total_index_equal FROM [nooredenadb].[tsetmc].[market_data_today]",
-                                      powerbi_database)
+                                 db_conn)
 total_eq_idx_his = pd.concat([total_eq_idx_his, total_eq_idx_today], axis=0, ignore_index=True
                                       ).drop_duplicates(subset="date", keep="last", inplace=False, ignore_index=True)
 
@@ -90,7 +90,7 @@ merket_cap = merket_cap.merge(dim_date[["deven", "date"]], on="deven", how="left
 ##################################################
 
 repo_rate = pd.read_sql("SELECT REPLACE(date, '/', '-') AS date, repo_rate FROM "
-                        "[nooredenadb].[extra].[cbi_repo_rate] ORDER BY date", powerbi_database)
+                        "[nooredenadb].[extra].[cbi_repo_rate] ORDER BY date", db_conn)
 
 ##################################################
 
@@ -246,7 +246,7 @@ oil_brent["brent_oil"] = oil_brent["brent_oil"].astype(float)
 
 query_bandar_crack = ("SELECT date_jalali as date, price crack_bandar FROM [nooredenadb].[commodity].[commodities_data]"
                       " WHERE commodity='کرک شبندر جدید'")
-bandar_crack = pd.read_sql(query_bandar_crack, powerbi_database)
+bandar_crack = pd.read_sql(query_bandar_crack, db_conn)
 
 ##################################################
 
@@ -254,7 +254,7 @@ query_dollar_index = ("SELECT TEMP1.date, TEMP2.dollar_index FROM (SELECT date, 
                       "[commodity].[commodity_data] WHERE id=700007 GROUP BY date) AS TEMP1 LEFT JOIN (SELECT date, "
                       "time, current_price dollar_index FROM [nooredenadb].[commodity].[commodity_data] WHERE "
                       "id=700007) AS TEMP2 ON TEMP1.date=TEMP2.date AND TEMP1.time=TEMP2.time")
-dollar_index = pd.read_sql(query_dollar_index, powerbi_database)
+dollar_index = pd.read_sql(query_dollar_index, db_conn)
 
 ##################################################
 
@@ -288,18 +288,18 @@ else:
 # end_date = today - jdatetime.timedelta(days=5)
 
 funds_gold = pd.read_sql("SELECT symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols] "
-                         "WHERE sector='68' AND yval='380' AND symbol_name LIKE '%طلا%'", powerbi_database)
+                         "WHERE sector='68' AND yval='380' AND symbol_name LIKE '%طلا%'", db_conn)
 funds_lev = pd.read_sql("SELECT symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols] "
-                         "WHERE sector='68' AND symbol_name LIKE '%اهرم%'", powerbi_database)
+                         "WHERE sector='68' AND symbol_name LIKE '%اهرم%'", db_conn)
 
 def get_date_ids_price(ids: list[str], date:int, price_name:str, type: Literal["historical", "today"]):
     if type == "historical":
         df = pd.read_sql(f"SELECT symbol_id, final_price AS [{price_name}] FROM [nooredenadb].[tsetmc].[symbols_history] "
-                        f"WHERE symbol_id IN {str(tuple(ids))} AND date={date}", powerbi_database)
+                        f"WHERE symbol_id IN {str(tuple(ids))} AND date={date}", db_conn)
 
     elif type == "today":
         df = pd.read_sql(f"SELECT symbol_id, close_price AS [{price_name}] FROM [nooredenadb].[tsetmc].[symbols_data_today]"
-                         f" WHERE symbol_id IN {str(tuple(ids))}", powerbi_database)
+                         f" WHERE symbol_id IN {str(tuple(ids))}", db_conn)
     else:
         raise ValueError("type must be a string with value of 'historical' or 'today'")
     return df
@@ -344,7 +344,7 @@ funds_lev_return["return"] = (funds_lev_return[f"{end_date.strftime("%Y/%m/%d")}
 
 query_funds_bubble = ("SELECT symbol, symbol_id, close_price, nav FROM [nooredenadb].[tsetmc].[symbols_data_today]"
                           " WHERE yval IN ('305', '380')")
-funds_bubble = pd.read_sql(query_funds_bubble, powerbi_database)
+funds_bubble = pd.read_sql(query_funds_bubble, db_conn)
 funds_bubble["bubble"] = round(((funds_bubble["close_price"] / funds_bubble["nav"]) - 1) , 4)
 funds_bubble = funds_bubble[["symbol_id", "symbol", "bubble"]]
 
@@ -356,19 +356,19 @@ funds_gold.dropna(subset=["symbol"], inplace=True, ignore_index=True)
 
 ##################################################
 
-indices = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[indices]", powerbi_database)
+indices = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[indices]", db_conn)
 
 indices_start = pd.read_sql(f"SELECT indices_id, close_price as [{start_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
                             f"[tsetmc].[indices_history] WHERE date={start_date.togregorian().strftime('%Y%m%d')}",
-                            powerbi_database)
+                            db_conn)
 
 if end_date == today:
     indices_end = pd.read_sql(f"SELECT indices_id, close_price as [{end_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
-                              f"[tsetmc].[indices_data_today]", powerbi_database)
+                              f"[tsetmc].[indices_data_today]", db_conn)
 else:
     indices_end = pd.read_sql(f"SELECT indices_id, close_price as [{end_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
                               f"[tsetmc].[indices_history] WHERE date={end_date.togregorian().strftime('%Y%m%d')}",
-                              powerbi_database)
+                              db_conn)
 
 indices_return = indices_start.merge(indices_end, on="indices_id", how="left").merge(
     indices[["indices_id", "indices_name"]], on="indices_id", how="left")[[
@@ -410,7 +410,7 @@ query_market_top10_return_30d = ("SELECT TOP(10) date, symbol, price_last, total
                                  "((try_convert(FLOAT, price_last) / try_convert(FLOAT, price_one_month)) - 1) "
                                  "[return] FROM [nooredenadb].[tsetmc].[market_return] "
                                  "WHERE symbol != 'وسرمايه' ORDER BY market_cap DESC")
-market_top10_return_30d = pd.read_sql(query_market_top10_return_30d, powerbi_database)
+market_top10_return_30d = pd.read_sql(query_market_top10_return_30d, db_conn)
 market_top10_return_30d.sort_values(by="return", inplace=True, ignore_index=True, ascending=False)
 
 query_indices_return_30d = ("SELECT TEMP1.*, indices.indices_name FROM (SELECT [date], [indices_id], "
@@ -418,7 +418,7 @@ query_indices_return_30d = ("SELECT TEMP1.*, indices.indices_name FROM (SELECT [
                             "try_convert(float, [price_one_month])) - 1)  AS [return] FROM [nooredenadb].[tsetmc]"
                             ".[indices_return]) TEMP1 LEFT JOIN [nooredenadb].[tsetmc].[indices] "
                             "ON indices.indices_id=TEMP1.indices_id")
-indices_return_30d = pd.read_sql(query_indices_return_30d, powerbi_database)
+indices_return_30d = pd.read_sql(query_indices_return_30d, db_conn)
 indices_return_30d.sort_values(by="return", inplace=True, ignore_index=True, ascending=False)
 
 
@@ -428,7 +428,7 @@ query_portfolio_top10_return_30d = ("SELECT TEMP1.value,TEMP2.* FROM (SELECT TOP
                                     "[price_last],[price_one_month],((try_convert(float,[price_last])/try_convert(float"
                                     ",[price_one_month]))-1) [return] FROM [nooredenadb].[tsetmc].[market_return]) "
                                     "TEMP2 ON TEMP1.symbol=TEMP2.symbol")
-portfolio_top10_return_30d = pd.read_sql(query_portfolio_top10_return_30d, powerbi_database)
+portfolio_top10_return_30d = pd.read_sql(query_portfolio_top10_return_30d, db_conn)
 portfolio_top10_return_30d.sort_values(by="return", inplace=True, ignore_index=True, ascending=False)
 
 ##################################################

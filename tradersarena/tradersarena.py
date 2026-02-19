@@ -8,11 +8,11 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 ####################################################################################################
 
-symbols = pd.read_sql("SELECT symbol, symbol_name, symbol_id FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1", powerbi_database)
+symbols = pd.read_sql("SELECT symbol, symbol_name, symbol_id FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1", db_conn)
 symbols.replace({"ك": "ک", "ي": "ی"}, regex=True, inplace=True)
 search_phrase = symbols["symbol"].unique().tolist() + symbols["symbol_name"].unique().tolist()
 
@@ -62,7 +62,7 @@ for i in tqdm(range(len(tradersarena_symbols))):
 symbols_df = pd.DataFrame(symbols_df)
 symbols_df = symbols_df[["symbol", "symbol_id", "symbol_name", "SS0", "SS0_date", "SR0", "SR0_date"]]
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("TRUNCATE TABLE [nooredenadb].[tradersarena].[symbols]")
 crsr.close()
 insert_to_database(symbols_df, "[nooredenadb].[tradersarena].[symbols]")

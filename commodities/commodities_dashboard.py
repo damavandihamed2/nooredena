@@ -17,8 +17,8 @@ warnings.filterwarnings("ignore")
 colors_list = px.colors.qualitative.Dark24
 _dash_renderer._set_react_version("18.2.0")
 six_month_before = (jdatetime.datetime.now() - jdatetime.timedelta(days=180)).strftime(format="%Y-%m-%d")
-powerbi_database = make_connection()
-cmdty_options = pd.read_sql(f"SELECT DISTINCT(name) FROM [nooredenadb].[commodity].[commodities_data] WHERE date_jalali >= '{six_month_before}' ORDER BY name", powerbi_database)["name"].tolist()
+db_conn = make_connection()
+cmdty_options = pd.read_sql(f"SELECT DISTINCT(name) FROM [nooredenadb].[commodity].[commodities_data] WHERE date_jalali >= '{six_month_before}' ORDER BY name", db_conn)["name"].tolist()
 chartoptions = {
     'layout': {'background': {'type': 'solid', 'color': '#ffffff'}, 'textColor': 'black', "attributionLogo": True},
     'grid': {'vertLines': {'visible': True, 'color': 'rgba(0,0,0,0.075)'}, 'horzLines': {'visible': True, 'color': 'rgba(0,0,0,0.075)'}},
@@ -164,7 +164,7 @@ def update_graph(value):
     global df_table
     df_table = pd.DataFrame(columns=["date", "date_jalali"])
     for v in range(len(value)):
-        df = pd.read_sql(f"SELECT [date], [date_jalali], [price] ,[name] ,[commodity], [reference], [unit] FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{value[v]}'", powerbi_database)
+        df = pd.read_sql(f"SELECT [date], [date_jalali], [price] ,[name] ,[commodity], [reference], [unit] FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{value[v]}'", db_conn)
         n_ = df["commodity"].unique()[0]
         r_ = df["reference"].unique()[0]
         n_ = n_ + " - " + r_

@@ -12,22 +12,22 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 color_green = "#00ff00"
 color_red = "#ff0000"
 fnt = "B Nazanin"
 query_dim_date = ("SELECT TRY_CONVERT(INT, REPLACE([Miladi], '-', '')) as dEven, [Jalali_1] as date "
                   "FROM [nooredenadb].[extra].[dim_date] where Jalali_1>='1402/01/01'")
-dim_date = pd.read_sql(query_dim_date, powerbi_database)
+dim_date = pd.read_sql(query_dim_date, db_conn)
 
-sectors = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[sectors]", powerbi_database)
+sectors = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[sectors]", db_conn)
 query_sectors_trades = ("SELECT date,sector,action,SUM(net_value) AS net_value,SUM(total_cost) AS total_cost FROM "
                         "(SELECT date,symbol,type,action,net_value,total_cost, CASE WHEN symbol='دارایکم' THEN"
                         " 'بانکها و موسسات اعتباری' WHEN symbol='گنگین' THEN 'چندرشته ای صنعتی' ELSE sector END "
                         "AS [sector] FROM [nooredenadb].[sigma].[sigma_buysell] WHERE date>='1402/11/01' AND "
                         "date<='1403/10/30') AS TEMP1 WHERE type IN ('صندوق', 'سهام', 'حق تقدم') and "
                         "sector!='صندوق سرمایه گذاری قابل معامله' GROUP BY date,sector,action,sector ORDER BY date")
-sectors_trades = pd.read_sql(query_sectors_trades, powerbi_database)
+sectors_trades = pd.read_sql(query_sectors_trades, db_conn)
 
 sectors_trades.rename({"sector": "sector_name"}, axis=1, inplace=True)
 sectors_trades.replace({"ک": "ك", "ی": "ي"}, regex=True, inplace=True)

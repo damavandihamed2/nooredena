@@ -33,15 +33,15 @@ def id_extract(my_string, pattern):
 warnings.filterwarnings("ignore")
 patterns = ["ParTree=151311&i=([0-9]{1,})", "instInfo/([0-9]{1,})", "InstInfo/([0-9]{1,})"]
 combined = "|".join(patterns)
-powerbi_database = make_connection()
+db_conn = make_connection()
 symbols = pd.read_sql("SELECT [symbol], [symbol_name], [symbol_id], [last_time], [final_last_date], [active] "
-                      "FROM [nooredenadb].[tsetmc].[symbols]",powerbi_database)
+                      "FROM [nooredenadb].[tsetmc].[symbols]", db_conn)
 symbols.sort_values(by=["symbol_name", "active", "last_time"], inplace=True, ignore_index=True)
 
 
 
 funds_data = pd.read_sql("SELECT DISTINCT(symbol_name) FROM [nooredenadb].[funds].[funds_inv_trades_raw]",
-                         powerbi_database) # "[nooredenadb].[funds].[funds_symbol_mapper]"
+                         db_conn) # "[nooredenadb].[funds].[funds_symbol_mapper]"
 
 funds_data["name"] = funds_data["symbol_name"]
 funds_data["symbol_name"].replace({"ک": "ك", "ی": "ي", r"\\u202b": "", r"\\u200c": " "},

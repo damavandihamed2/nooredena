@@ -6,7 +6,7 @@ import requests as rq
 from utils.database import make_connection
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 header = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                         "Chrome/121.0.0.0 Safari/537.36"}
 indices = pd.DataFrame(data={
@@ -29,7 +29,7 @@ for d in range(len(data_["start_dates"])):
         sql=f"SELECT [symbol], [type], [amount], [final_price], [total_cost] FROM "
             f"[nooredenadb].[sigma].[sigma_portfolio] WHERE date = '{data_['start_dates'][d]}' AND "
             f"type NOT IN ('گواهی سپرده کالایی', 'اختیار معامله | موقعیت خرید', 'اختیار معامله | موقعیت فروش')",
-        con=powerbi_database)
+        con=db_conn)
 
     portfolio["total_cost"] += ((portfolio["type"] == "حق تقدم") * 1000) * portfolio["amount"]
     portfolio["symbol"] = portfolio["symbol"].str.rstrip("ح")

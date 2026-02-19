@@ -13,8 +13,8 @@ logging.basicConfig(filename="D:/Python Projects/new_bi/log/sectors_history.log"
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
 yesterday = int((datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y%m%d"))
-powerbi_database = make_connection()
-sectors = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[sectors] WHERE sector_id IS NOT NULL", powerbi_database)
+db_conn = make_connection()
+sectors = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[sectors] WHERE sector_id IS NOT NULL", db_conn)
 
 ###########################################################################################################
 

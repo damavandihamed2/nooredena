@@ -14,14 +14,14 @@ logging.basicConfig(filename="D:/Python Projects/new_bi/log/symbols_old.log",
                     level=logging.ERROR,
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 today = jdatetime.datetime.today()
 date = today.strftime(format="%Y-%m-%d")
 time = today.strftime("%H:%M:%S")
 
 old_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_old] WHERE symbol_id != insCode and "
-                          "symbol=lVal18AFC  and lastDate=0", powerbi_database)
+                          "symbol=lVal18AFC  and lastDate=0", db_conn)
 old_symbols.drop_duplicates(subset="insCode", keep="first", inplace=True, ignore_index=True)
 
 #########################################################
@@ -135,6 +135,6 @@ symbols.drop(columns="query", inplace=True)
 
 #########################################################
 
-symbols_server = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols]", powerbi_database)
+symbols_server = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols]", db_conn)
 insert_to_database(dataframe=symbols, database_table="[nooredenadb].[tsetmc].[symbols]", loading=False)
 

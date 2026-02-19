@@ -7,7 +7,7 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 header_ipcheck = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -74,7 +74,7 @@ stocks = pd.concat([stocks, funds_etf], axis=0, ignore_index=True)
 stocks.rename({"name": "symbol", "instrument_state": "state", "instrument_description": "description",
                "trade_date_time": "last_date"}, axis=1, inplace=True)
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("TRUNCATE TABLE [nooredenadb].[rahavard].[symbols]")
 crsr.close()
 

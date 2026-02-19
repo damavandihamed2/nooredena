@@ -8,9 +8,9 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
-rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", powerbi_database)
+rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_conn)
 
 agent = Agent(username="09372377126", password="Dh74@123456")
 
@@ -47,7 +47,7 @@ for i in tqdm(range(len(rahavard_symbols))):
 
 ########################################################################################################################
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("Truncate TABLE [nooredenadb].[rahavard].[dps_funds]")
 crsr.close()
 insert_to_database(dataframe=dps_fund_df, database_table="[nooredenadb].[rahavard].[dps_funds]")
@@ -55,7 +55,7 @@ insert_to_database(dataframe=dps_fund_df, database_table="[nooredenadb].[rahavar
 ########################################################################################################################
 
 dps_df = dps_df[~((dps_df["asset_id"] == "604") & (dps_df["date_time"] == "2025-03-03T00:00:00+03:30"))]
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("Truncate TABLE [nooredenadb].[rahavard].[dps]")
 crsr.close()
 insert_to_database(dataframe=dps_df, database_table="[nooredenadb].[rahavard].[dps]")
@@ -69,7 +69,7 @@ capital_changes_df.drop(columns=["capital_change", "capital_change_percent", "is
                                  "is_reserve", "contribution_percent", "premium_percent", "reserve_percent",
                                  "contribution_percentage", "is_capital_changed_increased", "is_capital_changed",
                                  "previous_capital_percent"], inplace=True)
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("Truncate TABLE [nooredenadb].[rahavard].[capital_changes]")
 crsr.close()
 insert_to_database(dataframe=capital_changes_df, database_table="[nooredenadb].[rahavard].[capital_changes]")

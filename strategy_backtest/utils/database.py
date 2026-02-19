@@ -23,9 +23,9 @@ def db_conn_check():
 
 
 if db_conn_check():
-    powerbi_database_public = make_connection(
+    db_conn_public = make_connection(
         username=authenticator_public["username"], password=authenticator_public["password"]
     )
 else:
-    powerbi_database_public = None
+    db_conn_public = None
 

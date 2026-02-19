@@ -13,9 +13,9 @@ print("************** symbols **************" + "\n")
 logging.basicConfig(filename="D:/Python Projects/new_bi/log/symbols_history.log",
                     level=logging.ERROR, format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
-powerbi_database = make_connection()
+db_conn = make_connection()
 yesterday = int((datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y%m%d"))
-symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1", powerbi_database)
+symbols = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1", db_conn)
 col_mapper = {"priceChange": "change_price", "priceMin": "low_price", "priceMax": "high_price", "insCode": "symbol_id",
               "priceYesterday": "yesterday_price", "priceFirst": "open_price", "last": "last", "hEven": "last_time",
               "pDrCotVal": "close_price", "zTotTran": "trade_amount", "pClosing": "final_price", "iClose": "iclose",

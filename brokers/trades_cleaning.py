@@ -6,17 +6,17 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 today = jdatetime.datetime.today().strftime('%Y/%m/%d')
 
 ####################################################################################
 
 trades_tadbir_start = pd.read_sql("SELECT max(date) as date FROM [nooredenadb].[brokers].[trades]",
-                                  powerbi_database)["date"].iloc[0]
+                                  db_conn)["date"].iloc[0]
 trades_tadbir_start = jdatetime.datetime.strptime(trades_tadbir_start, "%Y/%m/%d").togregorian().strftime(
     "%Y-%m-%d")
 trades_tadbir = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_tadbir] WHERE "
-                            f"TradeDate>='{trades_tadbir_start}'", powerbi_database)
+                            f"TradeDate>='{trades_tadbir_start}'", db_conn)
 
 if len(trades_tadbir) > 0:
     trades_tadbir["TradeSideTitle"].replace({"خرید": 1, "فروش": 2}, inplace=True)
@@ -45,9 +45,9 @@ else:
 ####################################################################################
 
 trades_rayan_start = pd.read_sql(
-    "SELECT max(date) as date FROM [nooredenadb].[brokers].[trades]", powerbi_database)["date"].iloc[0]
+    "SELECT max(date) as date FROM [nooredenadb].[brokers].[trades]", db_conn)["date"].iloc[0]
 trades_rayan = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_rayan] where "
-                           f"transactionDate>='{trades_rayan_start}'", powerbi_database)
+                           f"transactionDate>='{trades_rayan_start}'", db_conn)
 
 if len(trades_rayan) > 0:
     trades_rayan.drop(columns=["row_", "branch", "fcKey", "branchId", "csTypeName", "rowOrder", "debtor", "creditor",
@@ -91,7 +91,7 @@ if len(trades_df) > 0:
     trades_df.sort_values(["date", "broker_id", "type", "symbol"], ignore_index=True, inplace=True)
     trades_df["symbol"].replace({"ی": "ي", "ک": "ك"}, regex=True, inplace=True)
     try:
-        crsr = powerbi_database.cursor()
+        crsr = db_conn.cursor()
         crsr.execute(f"DELETE FROM [nooredenadb].[brokers].[trades] WHERE date >= '{trades_rayan_start}';")
         crsr.close()
         insert_to_database(dataframe=trades_df, database_table="[nooredenadb].[brokers].[trades]")
@@ -101,10 +101,10 @@ if len(trades_df) > 0:
 ###########################################################################################
 
 query_portfolio = "SELECT * FROM [nooredenadb].[portfolio].[portfolio]"
-portfolio = pd.read_sql(query_portfolio, powerbi_database)
+portfolio = pd.read_sql(query_portfolio, db_conn)
 
 trades_last = pd.read_sql("SELECT * FROM [nooredenadb].[brokers].[trades] where date=(SELECT max(date) FROM "
-                          "[nooredenadb].[brokers].[trades]);", powerbi_database)
+                          "[nooredenadb].[brokers].[trades]);", db_conn)
 trades_last["board"].replace({0: 1}, inplace=True)
 trades_last = trades_last.drop(columns=["broker_id", "price"], inplace=False).groupby(
     by=["date", "portfolio_id", "symbol", "is_ros", "is_paid_ros", "type", 'board'], as_index=False).sum()
@@ -120,7 +120,7 @@ query_options = ("SELECT TEMP1.symbol, TEMP1.strike_price, TEMP2.date FROM (SELE
                  "put_symbol AS symbol FROM [nooredenadb].[tsetmc].[options_data_today]) AS TEMP1 LEFT JOIN (SELECT "
                  "TRY_CONVERT(int, REPLACE(TRY_CONVERT(VARCHAR,Miladi), '-', '')) as end_date, Jalali_1 as date "
                  "FROM [nooredenadb].[extra].[dim_date]) AS TEMP2 ON TEMP1.end_date=TEMP2.end_date")
-options = pd.read_sql(query_options, powerbi_database)
+options = pd.read_sql(query_options, db_conn)
 options["strike_price"] = options[["strike_price"]].applymap('{:,}'.format)
 options["option_description"] = "(" + options["strike_price"] + ")" + " " + "(" + options["date"] + ")"
 options = options[["symbol", "option_description"]]
@@ -142,7 +142,7 @@ trades_last["total_cost_sep"] = [
     math.ceil(trades_last["cost_per_share_sep"].iloc[i] * trades_last["volume"].iloc[i]) for i in range(len(trades_last))]
 trades_last.drop(labels=["cost_per_share", "cost_per_share_sep"], axis=1, inplace=True)
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("TRUNCATE TABLE [nooredenadb].[brokers].[trades_last]")
 crsr.close()
 
@@ -152,16 +152,16 @@ if trades_last["date"].iloc[0] == today:
 ##########################################################################################
 
 query_portfolio = "SELECT * FROM [nooredenadb].[portfolio].[portfolio]"
-portfolio = pd.read_sql(query_portfolio, powerbi_database)
+portfolio = pd.read_sql(query_portfolio, db_conn)
 
 query_symbols_sector = "SELECT symbol, sector_name FROM [nooredenadb].[tsetmc].[symbols] WHERE active = 1"
-symbols_sector = pd.read_sql(query_symbols_sector, powerbi_database)
+symbols_sector = pd.read_sql(query_symbols_sector, db_conn)
 
 query_trades_last = ("SELECT date, portfolio_id, symbol, type, SUM(volume) AS volume, SUM(value) AS value, "
                      "SUM(total_cost) AS total_cost, SUM(total_cost_sep) AS total_cost_sep FROM "
                      "[nooredenadb].[brokers].[trades_last] WHERE SUBSTRING(symbol, 1, 1) NOT IN ('ض', 'ط') "
                      "GROUP BY date, portfolio_id, symbol, type")
-trades_last = pd.read_sql(query_trades_last, powerbi_database)
+trades_last = pd.read_sql(query_trades_last, db_conn)
 
 portfolio["sub_sector"].fillna("", inplace=True)
 sub_sectors = portfolio[["symbol", "sub_sector"]].drop_duplicates(
@@ -199,7 +199,7 @@ if (len(trades_last) > 0) and (trades_last["date"].iloc[0] == today):
     portfolio_ = portfolio_[portfolio_["amount"] > 0].reset_index(drop=True, inplace=False)
     portfolio_["sub_sector"].replace({"": None}, inplace=True)
 
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_temp]")
     crsr.close()
     insert_to_database(dataframe=portfolio_, database_table="[nooredenadb].[portfolio].[portfolio_temp]")
@@ -212,16 +212,16 @@ else:
 query_options_data = ("SELECT call_symbol AS symbol, contract_size, strike_price FROM [nooredenadb].[tsetmc]."
                       "[options_data_today] UNION SELECT put_symbol AS symbol, contract_size, strike_price "
                       "FROM [nooredenadb].[tsetmc].[options_data_today]")
-options_data = pd.read_sql(query_options_data, powerbi_database)
+options_data = pd.read_sql(query_options_data, db_conn)
 
 query_trades_last_options = ("SELECT date, portfolio_id, symbol, type, volume, value FROM "
                              "[nooredenadb].[brokers].[trades_last] WHERE SUBSTRING(symbol, 1, 1) IN ('ض', 'ط')")
-trades_last_options = pd.read_sql(query_trades_last_options, powerbi_database)
+trades_last_options = pd.read_sql(query_trades_last_options, db_conn)
 trades_last_options = trades_last_options.merge(options_data, on="symbol", how="left")
 trades_last_options["volume"] = trades_last_options["volume"] / trades_last_options["contract_size"]
 
 query_portfolio = "SELECT * FROM [nooredenadb].[portfolio].[portfolio_options]"
-portfolio_options = pd.read_sql(query_portfolio, powerbi_database)
+portfolio_options = pd.read_sql(query_portfolio, db_conn)
 portfolio_options_ = portfolio_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False)
 
 if (len(trades_last_options) > 0) and (trades_last_options["date"].iloc[0] == today):
@@ -244,7 +244,7 @@ if (len(trades_last_options) > 0) and (trades_last_options["date"].iloc[0] == to
     portfolio_options_ = portfolio_options_[["date", "portfolio_id", "symbol", "type", "amount", "total_cost"]]
     portfolio_options_ = portfolio_options_.merge(options_data, on="symbol", how="left")
 
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_options_temp]")
     crsr.close()
     insert_to_database(dataframe=portfolio_options_, database_table="[nooredenadb].[portfolio].[portfolio_options_temp]")
@@ -253,7 +253,7 @@ else:
     portfolio_options_.dropna(subset=["strike_price"], inplace=True, ignore_index=True)
     portfolio_options_["date"] = today
 
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_options_temp]")
     crsr.close()
     insert_to_database(dataframe=portfolio_options_, database_table="[nooredenadb].[portfolio].[portfolio_options_temp]")
@@ -266,8 +266,8 @@ else:
 #          " t1 JOIN (SELECT broker_id, transactionDate, MAX(row_) AS row_ FROM [nooredenadb].[brokers].[trades_rayan]" \
 #          " GROUP BY broker_id, transactionDate) t2 ON t1.broker_id = t2.broker_id AND" \
 #          " t1.transactionDate = t2.transactionDate AND t1.row_ = t2.row_ ORDER BY broker_id, transactionDate;"
-# tmp = pd.read_sql(query_, powerbi_database)
-# brokers = pd.read_sql("SELECT broker_name, broker_id FROM brokers.brokers", powerbi_database)
+# tmp = pd.read_sql(query_, db_conn)
+# brokers = pd.read_sql("SELECT broker_name, broker_id FROM brokers.brokers", db_conn)
 # tmp = tmp.merge(brokers, on="broker_id", how="left")
 # # tmp_ = tmp[tmp["transactionDate"] == "1403/10/30"]
 # tmp["year_month"] = tmp["transactionDate"].str[:7]

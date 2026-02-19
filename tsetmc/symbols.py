@@ -14,13 +14,13 @@ logging.basicConfig(filename="D:/Python Projects/new_bi/log/symbols.log",
                     level=logging.ERROR,
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
-powerbi_database = make_connection()
+db_conn = make_connection()
 today = jdatetime.datetime.today()
 date = today.strftime(format="%Y-%m-%d")
 time = today.strftime("%H:%M:%S")
 sectors = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[sectors] where sector not in ('59', '69', '76', '77', '82')",
-                      powerbi_database)
-symbols_server = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols]", powerbi_database)
+                      db_conn)
+symbols_server = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols]", db_conn)
 
 #########################################################
 
@@ -185,13 +185,13 @@ symbols.drop(columns="query", inplace=True)
 for i in range(len(symbols_server)):
     sid = symbols_server["symbol_id"].iloc[i]
     if sid not in symbols["symbol_id"].values:
-        crsr = powerbi_database.cursor()
+        crsr = db_conn.cursor()
         crsr.execute(f"UPDATE [nooredenadb].[tsetmc].[symbols] SET active=0 WHERE symbol_id='{sid}'")
         crsr.close()
 
 
 symbols["active"] = [1] * len(symbols)
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute(f"DELETE FROM [nooredenadb].[tsetmc].[symbols] WHERE active=1")
 crsr.close()
 insert_to_database(dataframe=symbols, database_table="[nooredenadb].[tsetmc].[symbols]", loading=False)

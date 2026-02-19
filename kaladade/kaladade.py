@@ -8,7 +8,7 @@ from kaladade.kaladade_decoder import KaladadeDecoder
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 #######################################################################################################################
 

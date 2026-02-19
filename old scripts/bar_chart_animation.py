@@ -60,7 +60,7 @@ def adj_final_price_date(dataframe, date):
     return price
 
 
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 #######################################################################################################################
 #######################################################################################################################
@@ -89,7 +89,7 @@ symbols_data = pd.DataFrame(symbols_data)
 
 
 
-sector_detail_data = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_detail_data]", powerbi_database)
+sector_detail_data = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[symbols_detail_data]", db_conn)
 sector_detail_data.drop_duplicates(subset="symbol", keep="first", inplace=True, ignore_index=True)
 
 print("----------------------------------------------------------------------", "\n",
@@ -104,7 +104,7 @@ for i in range(len(sector_detail_data)):
         symbol = sector_detail_data["symbol"].iloc[i]
         while True:
             try:
-                s = pd.read_sql(f"SELECT [date],[symbol],[final_price],[yesterday_price] FROM [nooredenadb].[tsetmc].[stock_historical_data] where symbol=('{symbol}')", powerbi_database)
+                s = pd.read_sql(f"SELECT [date],[symbol],[final_price],[yesterday_price] FROM [nooredenadb].[tsetmc].[stock_historical_data] where symbol=('{symbol}')", db_conn)
                 if s is None:
                     break
                 if len(s) == 0:

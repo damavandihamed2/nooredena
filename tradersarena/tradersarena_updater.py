@@ -8,16 +8,16 @@ from utils.database import make_connection
 
 
 warnings.filterwarnings("ignore")
-powerbi_database = make_connection()
+db_conn = make_connection()
 last_year = int((datetime.datetime.now() - datetime.timedelta(days=365)).strftime("%Y%m%d"))
 
 ####################################################################################################
 
 symbols = pd.read_sql(f"SELECT symbol, symbol_id, final_price, total_share FROM [nooredenadb].[tsetmc].[symbols]"
-                      f" WHERE active=1 AND final_last_date>={last_year}", powerbi_database)
+                      f" WHERE active=1 AND final_last_date>={last_year}", db_conn)
 symbols["market_cap"] = symbols["final_price"] * symbols["total_share"]
 
-portfolio = pd.read_sql("SELECT symbol FROM [nooredenadb].[extra].[portfolio]", powerbi_database)
+portfolio = pd.read_sql("SELECT symbol FROM [nooredenadb].[extra].[portfolio]", db_conn)
 portfolio["portfolio"] = True
 
 symbols = symbols.merge(portfolio, on="symbol", how="left").fillna(False, inplace=False)
@@ -57,7 +57,7 @@ symbols_df = pd.DataFrame(symbols_df)
 symbols_df = symbols_df[["symbol_id", "SS0", "SS0_date", "SR0", "SR0_date"]]
 
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 for i in tqdm(range(len(symbols_df))):
     symbols_id = symbols_df["symbol_id"].iloc[i]
     for c in ["SS0", "SR0"]:

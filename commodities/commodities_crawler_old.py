@@ -22,11 +22,11 @@ sugar_path = "D:/database/commodity/sugar_price.xlsx"
 proxy = "127.0.0.1:10808"
 proxies = {'http': 'socks5://' + proxy,
            'https': 'socks5://' + proxy}
-powerbi_database = make_connection()
+db_conn = make_connection()
 today = jdatetime.datetime.today()
 
 dim_date = pd.read_sql("SELECT TRY_CONVERT(VARCHAR, Miladi) as Miladi, REPLACE(Jalali_1, '/', '-') as date "
-                       "FROM [nooredenadb].[extra].[dim_date]", powerbi_database)
+                       "FROM [nooredenadb].[extra].[dim_date]", db_conn)
 
 #######################################################################################################################
 
@@ -44,7 +44,7 @@ gas["reference"] = "وزارت نفت"
 gas["name"] = "گاز خوراک - (دلار بر مترمکعب)"
 
 last_date_jalali = pd.read_sql("SELECT MAX(date_jalali) as date FROM [nooredenadb].[commodity].[commodities_data]"
-                               " WHERE commodity='گاز خوراک'", powerbi_database)
+                               " WHERE commodity='گاز خوراک'", db_conn)
 last_date_jalali = last_date_jalali["date"].iloc[0]
 gas = gas[gas["date_jalali"] > last_date_jalali]
 if len(gas) > 0:
@@ -59,7 +59,7 @@ while True:
                                 captcha_key=captcha["key"], captcha_value=captcha["value"])
     if enigma_login.status_code == 200:
 
-        crsr = powerbi_database.cursor()
+        crsr = db_conn.cursor()
         crsr.execute(f"UPDATE [nooredenadb].[extra].[captcha_images] SET "
                      f"captcha_value='{captcha["value"]}' WHERE captcha_id='{captcha['captcha_id']}'")
         crsr.close()
@@ -71,7 +71,7 @@ while True:
 
 #######################################################################################################################
 
-cmdt_raw = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_data]", powerbi_database)
+cmdt_raw = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_data]", db_conn)
 cmdt = cmdt_raw[cmdt_raw["id"] != "-"]
 temporary_df = pd.DataFrame()
 for i in tqdm(range(len(cmdt))):
@@ -206,7 +206,7 @@ complete_df["price"] = complete_df["price"].astype(dtype="float")
 complete_df.sort_values(by="date", inplace=True, ignore_index=True)
 
 max_dates = pd.read_sql("SELECT MAX(date) AS maxdate, [name] FROM [nooredenadb].[commodity].[commodities_data] "
-                        "GROUP BY [name]", powerbi_database)
+                        "GROUP BY [name]", db_conn)
 complete_df_ = complete_df.merge(max_dates, on="name", how="left")
 complete_df_["maxdate"].fillna("0", inplace=True)
 complete_df_ = complete_df_[complete_df_["date"] > complete_df_["maxdate"]]
@@ -264,7 +264,7 @@ for i in range(len(oil_price_id)):
     oil_price_df["price"] = oil_price_df["price"].astype(dtype="float")
     oil_price_df.sort_values(by="date", inplace=True, ignore_index=True)
 
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE reference = 'OIL PRICE' and "
                  f"commodity='{oil_price_df['commodity'].iloc[0]}' and date >= '{oil_price_df['date'].min()}'")
     crsr.close()
@@ -301,7 +301,7 @@ data.replace("/", "-", regex=True, inplace=True)
 df = pd.DataFrame()
 for c in ["شکر خام نيويورک", "شکر سفيد لندن"]:
     d_max = pd.read_sql(f"SELECT MAX(date) FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='{c}'",
-                        powerbi_database)
+                        db_conn)
     d_max = d_max[""].iloc[0]
     tmp = data[data["date"] > d_max]
     if len(tmp) > 0:
@@ -327,7 +327,7 @@ table = pd.DataFrame()
 for i in range(len(commodities)):
     df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] "
                      f"where name='{commodities[i]}' ORDER BY [date]",
-                     powerbi_database)
+                     db_conn)
     tmp = pd.DataFrame(data={
         "name": [df["commodity"].iloc[0]],
         "current_price": [df["price"].iloc[-1]],
@@ -339,7 +339,7 @@ for i in range(len(commodities)):
 
 for i in range(len(table)):
     name_ = table['name'].iloc[i]
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"UPDATE [nooredenadb].[commodity].[commodity_data_today] SET price={table['current_price'].iloc[i]}, "
                  f"price_change={table['current_change'].iloc[i]}, "
                  f"change_percent={table['current_change_percent'].iloc[i]} WHERE name='{name_}'")
@@ -349,7 +349,7 @@ for i in range(len(table)):
 
 response = rq.get("https://itpnews.com/persian/")
 php_session_id = response.headers["set-cookie"].split(";")[0]
-itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_itpnews_detail_data]", powerbi_database)
+itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_itpnews_detail_data]", db_conn)
 
 from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=10)).strftime("%Y/%m/%d")
 to_d = jdatetime.datetime.today().strftime("%Y/%m/%d")
@@ -386,7 +386,7 @@ cmdty_df["owner"] = "shayan"
 cmdty_df.drop_duplicates(subset=["commodity", "date"], keep="first", ignore_index=True, inplace=True)
 
 try:
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
                  f"date_jalali >='{from_d.replace('/', '-')}' and reference='itpnews'")
     crsr.close()
@@ -405,7 +405,7 @@ data[["reference", "owner", "unit"]] = "tgju.org", "pirnajafi", "دلار بر �
 data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit"] + ")"
 data = data[data["date_jalali"] >= from_d.replace('/', '-')].reset_index(drop=True, inplace=False)
 if len(data) > 0:
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
                  f"date_jalali >='{from_d.replace('/', '-')}' and commodity='گندم / بازار آمریکا'")
     crsr.close()
@@ -454,7 +454,7 @@ df_ = df_.merge(dim_date.rename({"date": "date_jalali", "Miladi": "date"}, axis=
 df_[["owner", "unit", "reference"]] = ["shayan", "دلار بر کانتینر", "macromicro.me"]
 df_["name"] = df_["commodity"] + " - " + df_["reference"] + "(" + df_["unit"] + ")"
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
              "owner='shayan' AND unit='دلار بر کانتینر' AND reference='macromicro.me'")
 crsr.close()

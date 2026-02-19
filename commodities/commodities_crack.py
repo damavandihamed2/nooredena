@@ -10,10 +10,10 @@ from utils.database import make_connection, insert_to_database
 warnings.filterwarnings("ignore")
 result_path = "D:/database/commodity/results.xlsx"
 today = jdatetime.datetime.today()
-powerbi_database = make_connection()
+db_conn = make_connection()
 
 dim_date = pd.read_sql("SELECT TRY_CONVERT(VARCHAR, Miladi) as Miladi, REPLACE(Jalali_1, '/', '-') as date "
-                       "FROM [nooredenadb].[extra].[dim_date]", powerbi_database)
+                       "FROM [nooredenadb].[extra].[dim_date]", db_conn)
 
 query_oil = ("SELECT COALESCE(b.date, d.date, o.date) AS date,b.brent,d.dubai,o.oman FROM (SELECT [date_jalali] AS "
              "date,[price] AS brent FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نفت برنت') b FULL"
@@ -21,7 +21,7 @@ query_oil = ("SELECT COALESCE(b.date, d.date, o.date) AS date,b.brent,d.dubai,o.
              " WHERE commodity='نفت دبی') d ON b.date=d.date FULL OUTER JOIN (SELECT [date_jalali] AS date,[price]"
              " AS oman FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نفت عمان') o ON COALESCE(b.date"
              ",d.date)=o.date ORDER BY date;")
-oil = pd.read_sql(query_oil, powerbi_database)
+oil = pd.read_sql(query_oil, db_conn)
 
 oil.fillna(method="ffill", axis=0, inplace=True)
 oil["light_oil"] = (((oil["brent"] + oil["dubai"] + oil["oman"])/3)-5) * 0.95
@@ -86,7 +86,7 @@ for c in tqdm(range(len(commodity_petrol))):
     name, commodity, reference = commodity_petrol.loc[c]
     q = (f"SELECT date_jalali AS date, price AS [{name}] FROM [nooredenadb].[commodity].[commodities_data] "
          f"WHERE commodity='{commodity}' AND reference='{reference}'")
-    temp = pd.read_sql(q, powerbi_database)
+    temp = pd.read_sql(q, db_conn)
     oil_refined = oil_refined.merge(temp, on="date", how="outer")
 oil_refined.sort_values(by="date", inplace=True, ascending=True, ignore_index=True)
 
@@ -111,7 +111,7 @@ ffill_cols = ["vb_nrc", "lubecut_heavy_nrc", "pbr1220", "pbr1202", "sbr1712", "s
 oil_refined.loc[:, ffill_cols] = oil_refined.loc[:, ffill_cols].ffill(inplace=False)
 
 lpg_missing_data = pd.read_sql(f"SELECT [date_jalali] as date, [price] as temp FROM "
-                               f"[nooredenadb].[commodity].[commodities_data] WHERE commodity='گاز مایع'", powerbi_database)
+                               f"[nooredenadb].[commodity].[commodities_data] WHERE commodity='گاز مایع'", db_conn)
 lpg_missing_data = dim_date[dim_date["date"]<="1401-05-02"][["date"]].merge(
     lpg_missing_data, on="date", how="left").ffill(inplace=False)
 
@@ -225,7 +225,7 @@ query_vacuumbottom_bandar = ("SELECT TEMP1.date,TEMP1.vacuumbottom_bandar_new/TE
                              "ProducerName='پالایش نفت بندرعباس' AND Quantity>0 GROUP BY date) AS TEMP1 Left JOIN "
                              "(SELECT date_jalali as date, price FROM [nooredenadb].[commodity].[commodities_data] "
                              "where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
-vacuumbottom_bandar = pd.read_sql(query_vacuumbottom_bandar, powerbi_database)
+vacuumbottom_bandar = pd.read_sql(query_vacuumbottom_bandar, db_conn)
 vacuumbottom_bandar = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     vacuumbottom_bandar, on="date", how="left").ffill(inplace=False).sort_values(
     by="date", inplace=False, ignore_index=True)
@@ -239,7 +239,7 @@ query_lubecut_bandar = ("SELECT TEMP1.date,TEMP1.lubecut_bandar_new/TEMP2.price 
                         "GROUP BY date) AS TEMP1 Left JOIN (SELECT date_jalali as date,price FROM [nooredenadb]."
                         "[commodity].[commodities_data] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date"
                         " order by date")
-lubecut_bandar = pd.read_sql(query_lubecut_bandar, powerbi_database)
+lubecut_bandar = pd.read_sql(query_lubecut_bandar, db_conn)
 lubecut_bandar = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     lubecut_bandar, on="date", how="left").ffill(inplace=False).sort_values(by="date", inplace=False, ignore_index=True)
 lubecut_bandar["lubecut_bandar_new"] = lubecut_bandar["lubecut_bandar_new"] * (0.94 * 0.1589873)  # change unit from (dollar/ton) to (dollar/barrel)
@@ -310,7 +310,7 @@ query_vacuumbottom_shpna = ("SELECT TEMP1.date,TEMP1.vacuumbottom_shpna_new/TEMP
                             "ProducerName='پالایش نفت اصفهان' AND Quantity>0 GROUP BY date) AS TEMP1 Left JOIN "
                             "(SELECT date_jalali as date, price FROM [nooredenadb].[commodity].[commodities_data] "
                             "where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
-vacuumbottom_shpna = pd.read_sql(query_vacuumbottom_shpna, powerbi_database)
+vacuumbottom_shpna = pd.read_sql(query_vacuumbottom_shpna, db_conn)
 vacuumbottom_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     vacuumbottom_shpna, on="date", how="left").ffill(
     inplace=False).sort_values(by="date", inplace=False, ignore_index=True)
@@ -324,7 +324,7 @@ query_lubecut_shpna = ("SELECT TEMP1.date,TEMP1.lubecut_shpna_new/TEMP2.price lu
                        "GROUP BY date) AS TEMP1 Left JOIN (SELECT date_jalali as date,price FROM [nooredenadb]."
                        "[commodity].[commodities_data] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date "
                        "order by date")
-lubecut_shpna = pd.read_sql(query_lubecut_shpna, powerbi_database)
+lubecut_shpna = pd.read_sql(query_lubecut_shpna, db_conn)
 lubecut_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     lubecut_shpna, on="date", how="left").ffill(inplace=False).sort_values(by="date", inplace=False, ignore_index=True)
 lubecut_shpna["lubecut_shpna_new"] *= (0.94 * 0.1589873)  # change unit from (dollar/ton) to (dollar/barrel)
@@ -343,7 +343,7 @@ query_isorecycle_shpna = ("SELECT TEMP1.date, TEMP1.isorecycle_shpna_new/TEMP2.p
                           "instrumentDisplayName='آیزوریسایکل' AND totTradedQuantity>0 GROUP BY tradeDateShamsi) AS "
                           "TEMP1 Left JOIN (SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_data]"
                           " where commodity='دلار نیما') TEMP2 ON TEMP1.date=TEMP2.date order by date")
-isorecycle_shpna = pd.read_sql(query_isorecycle_shpna, powerbi_database)
+isorecycle_shpna = pd.read_sql(query_isorecycle_shpna, db_conn)
 isorecycle_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     isorecycle_shpna, on="date", how="left").ffill(
     inplace=False).sort_values(by="date", inplace=False, ignore_index=True)
@@ -357,7 +357,7 @@ query_isofeed_shpna = ("SELECT TEMP1.date, TEMP1.isofeed_shpna_new/TEMP2.price A
                           "instrumentDisplayName='آیزوفید' AND totTradedQuantity>0 GROUP BY tradeDateShamsi) AS "
                           "TEMP1 Left JOIN (SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_data]"
                           " where commodity='دلار نیما') TEMP2 ON TEMP1.date=TEMP2.date order by date")
-isofeed_shpna = pd.read_sql(query_isofeed_shpna, powerbi_database)
+isofeed_shpna = pd.read_sql(query_isofeed_shpna, db_conn)
 isofeed_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     isofeed_shpna, on="date", how="left").ffill(inplace=False).sort_values(by="date", inplace=False, ignore_index=True)
 isofeed_shpna["isofeed_shpna_new"] *= (0.832639877367787 * 0.1589873)  # change unit from (dollar/ton) to (dollar/barrel)
@@ -371,7 +371,7 @@ query_solvent_shpna = ("SELECT TEMP1.date, TEMP1.solvent_shpna_new/TEMP2.price A
                        "AND priceUnitTitle='ریال' AND totTradedQuantity>0 GROUP BY tradeDateShamsi) AS TEMP1 Left JOIN "
                        "(SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_data] where "
                        "commodity='دلار نیما') TEMP2 ON TEMP1.date=TEMP2.date order by date")
-solvent_shpna = pd.read_sql(query_solvent_shpna, powerbi_database)
+solvent_shpna = pd.read_sql(query_solvent_shpna, db_conn)
 solvent_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     solvent_shpna, on="date", how="left").ffill(inplace=False).sort_values(by="date", inplace=False, ignore_index=True)
 solvent_shpna["solvent_shpna_new"] *= (158.9873)  # change unit from (dollar/liter) to (dollar/barrel)
@@ -475,7 +475,7 @@ query_pvc_shghadir = ("SELECT TEMP1.date,TEMP1.PVC_shghadir/TEMP2.price PVC_shgh
                       "[nooredenadb].[ime].[ime_data_historical] WHERE ProducerName='پتروشیمی غدیر' AND Quantity > 0 "
                       "GROUP BY date) AS TEMP1 Left JOIN (SELECT date_jalali as date,price FROM [nooredenadb].[commodity]."
                       "[commodities_data] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
-pvc_shghadir = pd.read_sql(query_pvc_shghadir, powerbi_database)
+pvc_shghadir = pd.read_sql(query_pvc_shghadir, db_conn)
 pvc_shghadir = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     pvc_shghadir, on="date", how="left").sort_values(by="date", inplace=False, ignore_index=True).ffill(inplace=False)
 oil_refined = oil_refined.merge(pvc_shghadir, on="date", how="left")
@@ -509,9 +509,9 @@ query_weekends = ("SELECT REPLACE(weekend, '/', '-') AS weekend, REPLACE(date, '
                   "JWeekNum) AS TEMP1 RIGHT JOIN (SELECT Jalali_1 AS date, jyear, JWeekNum FROM [nooredenadb].[extra]."
                   "[dim_date]) AS TEMP2 ON TEMP1.jyear=TEMP2.jyear AND TEMP1.JWeekNum=TEMP2.JWeekNum")
 
-products_shgouya = pd.read_sql(query_products_shgouya, powerbi_database)
-dollar_nima = pd.read_sql(query_dollar_nima, powerbi_database)
-weekends = pd.read_sql(query_weekends, powerbi_database)
+products_shgouya = pd.read_sql(query_products_shgouya, db_conn)
+dollar_nima = pd.read_sql(query_dollar_nima, db_conn)
+weekends = pd.read_sql(query_weekends, db_conn)
 dollar_nima = dollar_nima.merge(weekends[["date"]], on="date", how="outer").ffill(inplace=False)
 products_shgouya = products_shgouya.groupby(by="date", as_index=False).sum()
 products_shgouya = products_shgouya.merge(dollar_nima, on="date", how="left").dropna(subset=["dollar_nima"], inplace=False)
@@ -749,7 +749,7 @@ for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
     temp_df.drop_duplicates(subset=["date"], keep="first", inplace=True, ignore_index=True)
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
     cursor.close()
     insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]", loading=False)
@@ -763,7 +763,7 @@ metals_df = pd.DataFrame(columns=["date"])
 for c in range(len(commodity_metal)):
     name, commodity, reference = commodity_metal.loc[c]
     temp = pd.read_sql(f"SELECT date_jalali AS date, price AS [{name}] FROM [nooredenadb].[commodity].[commodities_data]"
-                       f" WHERE commodity='{commodity}' AND reference='{reference}'", powerbi_database)
+                       f" WHERE commodity='{commodity}' AND reference='{reference}'", db_conn)
     metals_df = metals_df.merge(temp, on="date", how="outer")
 metals_df.sort_values(by="date", inplace=True, ascending=True, ignore_index=True)
 metals_df.fillna(method="ffill", inplace=True)
@@ -792,7 +792,7 @@ ll = chart_df["name"].unique().tolist()
 for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
-    cursor = powerbi_database.cursor()
+    cursor = db_conn.cursor()
     cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
     cursor.close()
     insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -805,89 +805,89 @@ query_copper = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) 
                 "Quantity > 0 AND (Symbol LIKE '%-CCAA-%' OR Symbol LIKE '%-OACCAA-%') union SELECT date, TotalPrice,"
                 " Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-3-16' and Quantity > 0 AND ("
                 "Symbol LIKE '%-CCAA-%' OR Symbol LIKE '%-OACCAA-%')) AS TEMP1 group by date ORDER BY date")
-copper = pd.read_sql(query_copper, powerbi_database)
+copper = pd.read_sql(query_copper, db_conn)
 
 query_zinc = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS zinc FROM (SELECT date,"
               " TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-4-18' and "
               "Quantity > 0 union SELECT date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE"
               " Category='1-4-18' and Quantity > 0) AS TEMP1 group by date ORDER BY date")
-zinc = pd.read_sql(query_zinc, powerbi_database)
+zinc = pd.read_sql(query_zinc, db_conn)
 
 query_aluminium = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS aluminium FROM (SELECT"
                    " date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-2-11'"
                    " and Quantity > 0 union SELECT date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_today]"
                    " WHERE Category='1-2-11' and Quantity > 0) AS TEMP1 group by date ORDER BY date")
-aluminium = pd.read_sql(query_aluminium, powerbi_database)
+aluminium = pd.read_sql(query_aluminium, db_conn)
 
 query_aluminium_oxide = ("SELECT date, CAST(SUM(TotalPrice) AS float) / CAST(SUM(Quantity) AS float) AS aluminium_oxide"
                          " FROM (SELECT date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE"
                          " Category = '1-2-363' and Quantity > 0 UNION SELECT date, TotalPrice, Quantity FROM "
                          "[nooredenadb].[ime].[ime_data_today] WHERE Category = '1-2-363' and Quantity > 0) AS TEMP1"
                          " GROUP BY date ORDER BY date")
-aluminium_oxide = pd.read_sql(query_aluminium_oxide, powerbi_database)
+aluminium_oxide = pd.read_sql(query_aluminium_oxide, db_conn)
 
 query_bb = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS bb FROM (SELECT date, "
             "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-1-1' and date >"
             " '1400/01/01' and ProducerName='فولاد خوزستان' and Quantity > 0 union SELECT date, TotalPrice, Quantity"
             " FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-1-1' and ProducerName='فولاد خوزستان' and"
             " Quantity > 0) AS TEMP1 group by date ORDER BY date")
-bb = pd.read_sql(query_bb, powerbi_database)
+bb = pd.read_sql(query_bb, db_conn)
 
 query_concentrate = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS concentrate FROM ("
                      "SELECT date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE "
                      "Category='1-49-477' and date > '1400/01/01' and Quantity > 0 union SELECT date, TotalPrice, "
                      "Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-49-477' and Quantity > 0) "
                      "AS TEMP1 group by date ORDER BY date")
-concentrate = pd.read_sql(query_concentrate, powerbi_database)
+concentrate = pd.read_sql(query_concentrate, db_conn)
 
 query_pellitized = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS pellitized FROM ("
                     "SELECT date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE "
                     "Category='1-49-464' and date > '1400/01/01' and Quantity > 0 union SELECT date, TotalPrice, "
                     "Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-49-464' and Quantity > 0) "
                     "AS TEMP1 group by date ORDER BY date")
-pellitized = pd.read_sql(query_pellitized, powerbi_database)
+pellitized = pd.read_sql(query_pellitized, db_conn)
 
 query_dri = ("SELECT date, CAST(SUM(TotalPrice) AS float) / CAST(SUM(Quantity) AS float) AS dri FROM (SELECT date, "
              "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-97-452' and"
              " date > '1400/01/01' and Quantity > 0 union SELECT date, TotalPrice, Quantity FROM "
              "[nooredenadb].[ime].[ime_data_today] WHERE Category='1-97-452' and Quantity > 0) AS TEMP1"
              " group by date ORDER BY date")
-dri = pd.read_sql(query_dri, powerbi_database)
+dri = pd.read_sql(query_dri, db_conn)
 
 query_rebar = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS rebar FROM (SELECT date, "
                "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category in "
                "('1-1-6', '1-1-7', '1-1-21', '1-1-64') and date > '1400/01/01' and Quantity > 0 union SELECT date, "
                "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category in "
                "('1-1-6', '1-1-7', '1-1-21', '1-1-64') and Quantity > 0) AS TEMP1 group by date ORDER BY date")
-rebar = pd.read_sql(query_rebar, powerbi_database)
+rebar = pd.read_sql(query_rebar, db_conn)
 
 query_rebar_alloy = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS rebar_alloy FROM ("
                      "SELECT date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE "
                      "Category='1-1-2682' and date > '1400/01/01' and Quantity > 0 union SELECT date, TotalPrice, "
                      "Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-1-2682' and Quantity > 0) "
                      "AS TEMP1 group by date ORDER BY date")
-rebar_alloy = pd.read_sql(query_rebar_alloy, powerbi_database)
+rebar_alloy = pd.read_sql(query_rebar_alloy, db_conn)
 
 query_slab = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS slab FROM (SELECT date, "
               "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category='1-1-152' and "
               "ProducerName='فولاد خوزستان' and date > '1400/01/01' and Quantity > 0 union SELECT date, TotalPrice, "
               "Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category='1-1-152' and "
               "ProducerName='فولاد خوزستان' and Quantity > 0) AS TEMP1 group by date ORDER BY date")
-slab = pd.read_sql(query_slab, powerbi_database)
+slab = pd.read_sql(query_slab, db_conn)
 
 query_hr = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS hr FROM (SELECT date, "
             "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category in ('1-1-9', "
             "'1-1-2520') and ProducerName='فولاد مبارکه اصفهان' and date > '1400/01/01' and Quantity > 0 union SELECT"
             " date, TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_today] WHERE Category in ('1-1-9', "
             "'1-1-2520') and ProducerName='فولاد مبارکه اصفهان' and Quantity > 0) AS TEMP1 group by date ORDER BY date")
-hr = pd.read_sql(query_hr, powerbi_database)
+hr = pd.read_sql(query_hr, db_conn)
 
 query_gr = ("SELECT date, CAST(SUM(TotalPrice) AS float)/CAST(SUM(Quantity) AS float) AS gr FROM (SELECT date, "
             "TotalPrice, Quantity FROM [nooredenadb].[ime].[ime_data_historical] WHERE Category in ('1-1-17', "
             "'1-1-2521', '1-1-2522') and date > '1400/01/01' and Quantity > 0 union SELECT date, TotalPrice, Quantity"
             " FROM [nooredenadb].[ime].[ime_data_today] WHERE Category in ('1-1-17', '1-1-2521', '1-1-2522') and"
             " Quantity > 0) AS TEMP1 group by date ORDER BY date")
-gr = pd.read_sql(query_gr, powerbi_database)
+gr = pd.read_sql(query_gr, db_conn)
 
 dfs = [copper, zinc, aluminium, aluminium_oxide, bb, concentrate, pellitized, dri, rebar, rebar_alloy, slab, hr, gr]
 dataframe = reduce(lambda left, right: pd.merge(left,right,on=['date'], how='outer'), dfs)
@@ -939,7 +939,7 @@ chart_df["unit"] = ["-"] * len(chart_df)
 
 names = chart_df["name"].unique().tolist()
 for n in tqdm(range(len(names))):
-    cursor_ = powerbi_database.cursor()
+    cursor_ = db_conn.cursor()
     cursor_.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{names[n]}'")
     cursor_.close()
 
@@ -948,13 +948,13 @@ insert_to_database(dataframe=chart_df, database_table="[nooredenadb].[commodity]
 ####################################################################################################
 
 sugar = pd.read_sql("SELECT date, date_jalali, price as sugar FROM [nooredenadb].[commodity].[commodities_data] "
-                    "where commodity='شکر تضمینی' AND unit='ریال بر تن'", powerbi_database)
+                    "where commodity='شکر تضمینی' AND unit='ریال بر تن'", db_conn)
 wheat = pd.read_sql("SELECT date, date_jalali, price as wheat FROM [nooredenadb].[commodity].[commodities_data] "
-                    "where commodity='گندم تضمینی'", powerbi_database)
+                    "where commodity='گندم تضمینی'", db_conn)
 beet = pd.read_sql("SELECT date, date_jalali, price as beet FROM [nooredenadb].[commodity].[commodities_data] "
-                   "where commodity='چغندر تضمینی'", powerbi_database)
+                   "where commodity='چغندر تضمینی'", db_conn)
 dollar = pd.read_sql("SELECT date, date_jalali, price as dollar FROM [nooredenadb].[commodity].[commodities_data] "
-                     "WHERE name='دلار نیما - tgju.org (ریال بر دلار)'", powerbi_database)
+                     "WHERE name='دلار نیما - tgju.org (ریال بر دلار)'", db_conn)
 
 sugar_dollar = dollar.merge(sugar, on=["date", "date_jalali"], how="outer").sort_values(
     by="date", inplace=False, ignore_index=True)
@@ -968,7 +968,7 @@ sugar_dollar[["owner", "commodity", "unit", "reference"]] = ["pirnajafi", "شک�
                                                              "دلار بر تن", "وزارت جهاد کشاورزی"]
 sugar_dollar["name"] = sugar_dollar["commodity"] + " - " + sugar_dollar["reference"] + " (" + sugar_dollar["unit"] + ")"
 
-crsr = powerbi_database.cursor()
+crsr = db_conn.cursor()
 crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='شکر تضمینی' AND unit='دلار بر تن'")
 crsr.close()
 insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -978,7 +978,7 @@ insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commod
 # sugar_beet = sugar_beet[["date", "date_jalali", "price"]]
 # sugar_beet[["owner", "commodity", "unit", "reference"]] = ["pirnajafi", "نسبت شکر به چغندر تضمینی", "-", "کارشناس"]
 # sugar_beet["name"] = sugar_beet["commodity"]
-# crsr = powerbi_database.cursor()
+# crsr = db_conn.cursor()
 # crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نسبت شکر به چغندر تضمینی'")
 # crsr.close()
 # insert_to_database(dataframe=sugar_beet, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -988,7 +988,7 @@ insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commod
 # beet_wheat = beet_wheat[["date", "date_jalali", "price"]]
 # beet_wheat[["owner", "commodity", "unit", "reference"]] = ["pirnajafi", "نسبت چغندر به گندم تضمینی", "-", "کارشناس"]
 # beet_wheat["name"] = beet_wheat["commodity"]
-# crsr = powerbi_database.cursor()
+# crsr = db_conn.cursor()
 # crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نسبت چغندر به گندم تضمینی'")
 # crsr.close()
 # insert_to_database(dataframe=beet_wheat, database_table="[nooredenadb].[commodity].[commodities_data]")
@@ -999,7 +999,7 @@ commodities = ["کرک نوری جدید", "کرک شبندر جدید"]
 table = pd.DataFrame()
 for i in range(len(commodities)):
     df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] where "
-                     f"commodity='{commodities[i]}' ORDER BY [date]", powerbi_database)
+                     f"commodity='{commodities[i]}' ORDER BY [date]", db_conn)
     tmp = pd.DataFrame(data={
         "name": [df["commodity"].iloc[0]],
         "current_price": [df["price"].iloc[-1]],
@@ -1011,7 +1011,7 @@ for i in range(len(commodities)):
 
 for i in range(len(table)):
     name_ = table['name'].iloc[i]
-    crsr = powerbi_database.cursor()
+    crsr = db_conn.cursor()
     crsr.execute(f"UPDATE [nooredenadb].[commodity].[commodity_data_today] SET price={table['current_price'].iloc[i]}, "
                  f"price_change={table['current_change'].iloc[i]}, "
                  f"change_percent={table['current_change_percent'].iloc[i]} WHERE name='{name_}'")
