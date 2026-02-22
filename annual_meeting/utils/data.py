@@ -7,6 +7,22 @@ from utils import database
 
 warnings.filterwarnings("ignore")
 db_conn = database.make_connection()
+sectors_mapper = {
+    'ماشین آلات و تجهیزات': "ماشین آلات", 'بانکها و موسسات اعتباری': "بانک ها", 'چندرشته ای صنعتی': "هلدینگ",
+    'خودرو و قطعات': "خودرو", 'سرمایه گذاریها': "سرمایه گذاری ها", 'استخراج زغال سنگ': "زغال سنگ",
+    'سیمان آهک گچ': "سیمان", 'استخراج کانه های فلزی': "معادن", 'صندوق سرمایه گذاری قابل معامله': "صندوق",
+    'فرآورده های نفتی': "پالایشی", 'بیمه و بازنشستگی': "بیمه", 'کاشی و سرامیک': "کاشی", 'فلزات اساسی': "فلزات",
+    'لاستیک و پلاستیک': "لاستیک", 'عرضه برق،گاز،بخار و آب گرم': "یوتیلیتی", 'زراعت و خدمات وابسته': "زراعی",
+    'قند و شکر': "قندی", 'غذایی بجز قند وشکر': "غذایی", 'حمل و نقل انبارداری و ارتباطات ': "حمل و نقل",
+    # 'فنی و مهندسی': "", 'دارویی': "", 'ابزار پزشکی': "", 'شیمیایی': "", 'مخابرات': "",
+    # 'خرده فروشی': "", 'دستگاههای برقی': "", 'رایانه': "", 'اطلاعات و ارتباطات': "",
+}
+
+def get_weekends_jalali():
+    weekends_jalali = pd.read_sql("SELECT Jalali_1 date FROM [nooredenadb].[extra].[dim_date] "
+                                  "WHERE MWeekDay IN ('Friday', 'Thursday')", db_conn)
+    return weekends_jalali
+
 
 
 def get_portfolio_specs() -> pd.DataFrame:
@@ -139,4 +155,34 @@ def get_portfolio_data_daily(start_date: str, end_date: str, main_portfolio: boo
         sigma_profit, on="date", how="outer").merge(sigma_dividend, on="date", how="outer").fillna(0, inplace=False)
 
     return portfolio
+
+##################################################
+
+def get_sectors_value_daily(start_date: str, end_date: str, main_portfolio: bool = True, prx_portfolio: bool = True,
+                            drop_weekends: bool = True, convert_to_br: bool = True) -> pd.DataFrame:
+    if (not main_portfolio) and (not prx_portfolio):
+        raise ValueError("both main and prx could not be False!")
+    query_sector_value = (f"SELECT portfolio_id, date, SUM(value) AS value, sector FROM (SELECT portfolio_id, date, "
+                          f"gross_value_final_price value, CASE WHEN symbol = 'دارایکم' THEN 'بانکها و موسسات اعتباری' "
+                          f"WHEN symbol = 'گنگین' THEN 'چندرشته ای صنعتی' ELSE sector END sector FROM "
+                          f"[nooredenadb].[sigma].[portfolio] WHERE date >= '{start_date}' AND date <= '{end_date}')"
+                          f" TEMP GROUP BY portfolio_id, date, sector ORDER BY date")
+    sector_value = pd.read_sql(query_sector_value, db_conn)
+    if main_portfolio and (not prx_portfolio):
+        sector_value = sector_value[sector_value["portfolio_di"] ==1]
+    if (not main_portfolio) and prx_portfolio:
+        sector_value = sector_value[sector_value["portfolio_di"] != 1]
+    if drop_weekends:
+        weekends = get_weekends_jalali()
+        weekends["is_weekend"] = True
+        sector_value = sector_value.merge(weekends, on="date", how="left").fillna({"is_weekend": False}, inplace=False)
+        sector_value = sector_value[~sector_value["is_weekend"]].sort_values(by=["date", "sector"], ignore_index=True)
+    sector_value = sector_value.drop(labels=["portfolio_id", "is_weekend"], axis=1, inplace=False).groupby(
+        by=["date", "sector"], as_index=False).sum()
+    sector_value["sector"].replace(sectors_mapper, inplace=True, regex=False)
+    if convert_to_br:
+        sector_value["value"] = (sector_value["value"] / 1e9).round(0)
+    sector_value_new_format = pd.pivot_table(sector_value, index="date", columns="sector", values="value", fill_value=0)
+    # sector_value_new_format = sector_value_new_format.reset_index(drop=False, names=["date"], inplace=False)
+    return sector_value_new_format
 
