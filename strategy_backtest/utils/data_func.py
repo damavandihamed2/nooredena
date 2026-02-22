@@ -1,8 +1,8 @@
 import pandas as pd
 import socket, typing, requests
 
-import database
-from tsetmc import tsetmc_api
+from strategy_backtest.utils import database
+from strategy_backtest.utils import tsetmc_api
 
 
 ##################################################
