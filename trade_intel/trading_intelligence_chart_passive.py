@@ -10,50 +10,72 @@ from utils.database import make_connection
 
 warnings.filterwarnings("ignore")
 db_conn = make_connection()
-dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", db_conn)
 
-dataframe.drop(["inactivity_return", "value_diff_inactivity"], axis=1, inplace=True)
-dataframe["value_diff_passive"] /= 1e9
-dataframe.rename(mapper={
+start_dates = "1403/10/30"
+dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", db_conn)
+df = dataframe[dataframe["start_date"] == start_dates]
+
+df.drop(["inactivity_return", "value_diff_inactivity"], axis=1, inplace=True)
+df["value_diff_passive"] /= 1e9
+df.rename(mapper={
     "date": "تاریخ", "portfolio_return_active": "بازدهی فعالیت", "portfolio_return_passive": "بازدهی عدم فعالیت",
     "total_index_return": "بازدهی شاخص کل", "price_index_eq_return": "بازدهی شاخص هم وزن",
     "investment_sector_index_return": "بازدهی شاخص سرمایه گذاری ها", "top_30_index_return": "بازدهی شاخص 30 شرکت بزرگ",
     "value_diff_passive": "نفع فعالیت"}, axis=1, inplace=True)
 
-start_dates = "1403/10/30"
+df_ = pd.DataFrame()
+for c in df.columns:
+    if "بازدهی" in c:
+        df_ = pd.concat([df_, df[[c]].rename({c: "return"}, axis=1, inplace=False)], axis=0, ignore_index=True)
 
-y_range = []
-fig = make_subplots(rows=2, cols=2,
-                    print_grid=False,
-                    horizontal_spacing=0.025,
-                    vertical_spacing=0.025,
-                    column_widths=[0.99, 0.01],
-                    specs=[
-                        [{"type": "xy", "secondary_y": True, "r": -0.01, "l": 0, "colspan": 1},
-                         {}],
-                        [{"type": "table", "t": 0.1, "b": -0.009, "r": -0.02, "colspan": 1},
-                         {"type": "indicator", "r": -5}]
-                    ])
+def _range_with_pad(y, pad=0.05):
+    y = np.asarray(y, dtype=float)
+    ymin, ymax = np.nanmin(y), np.nanmax(y)
+    span = ymax - ymin
+    if span == 0:
+        span = max(1.0, abs(ymin) * 0.01)
+    ymin2 = ymin - pad * span
+    ymax2 = ymax + pad * span
+    return ymin2, ymax2
+
+def align_two_yaxes_by_first_point(y1, y2, pad=0.05):
+    """
+    y1 روی محور چپ، y2 روی محور راست
+    خروجی: (range1, range2) به صورت ([min1,max1],[min2,max2])
+    """
+    y1 = np.asarray(y1, dtype=float)
+    y2 = np.asarray(y2, dtype=float)
+    # رنج محور 1 (مرجع) بر اساس داده خودش
+    min1, max1 = _range_with_pad(y1, pad=pad)
+    span1 = max1 - min1
+    y1_0 = y1[0]
+    # جایگاه نسبی نقطه شروع روی محور 1
+    p = (y1_0 - min1) / span1
+    p = float(np.clip(p, 1e-6, 1 - 1e-6))  # برای جلوگیری از تقسیم بر صفر
+    # برای محور 2: span حداقلی که هم data_min/data_max رو پوشش بده و هم y2_0 در p قرار بگیره
+    y2_min, y2_max = float(np.nanmin(y2)), float(np.nanmax(y2))
+    y2_0 = float(y2[0])
+    # حداقل span برای پوشش دادن طرف پایین و بالا با حفظ p
+    need_span_low  = (y2_0 - y2_min) / p
+    need_span_high = (y2_max - y2_0) / (1 - p)
+    span2 = max(need_span_low, need_span_high)
+    # padding روی span2 (به همان مفهوم pad)
+    span2 = span2 * (1 + 2 * pad)
+    min2 = y2_0 - p * span2
+    max2 = y2_0 + (1 - p) * span2
+    return [min1, max1], [min2, max2]
+
+range1, range2 = align_two_yaxes_by_first_point(df_["return"], df["نفع فعالیت"], pad=0.05)
+range1 = [range1[0] * 100, range1[1] * 100]
 
 
-df = dataframe[dataframe["start_date"] == start_dates]
-
-y1_min = min(np.floor(min(df.drop(
-    labels=["نفع فعالیت", "تاریخ", "start_date"], axis=1, inplace=False).min()) * 100) / 100, -0.05)
-y1_max = max(np.ceil(max(df.drop(
-    labels=["نفع فعالیت", "تاریخ", "start_date"], axis=1, inplace=False).max()) * 100) / 100, 0.05)
-
-y1_range = [y1_min,
-            y1_max]
-
-y2_range = [np.ceil(max(df["نفع فعالیت"]) * 1.01),
-            np.floor(min(df["نفع فعالیت"]) * 1.01)]
-
-if (y1_min * (-1) * y2_range[1]) / (y2_range[0] * (-1)) > y1_max:
-    y1_range = [y1_min * 100, ((y1_min * (-1) * y2_range[1]) / (y2_range[0] * (-1))) * 100]
-else:
-    y1_range = [(((y1_max * (-1) * y2_range[0]) / y2_range[1]) * (-1)) * 100, y1_max * 100]
-y_range.append({"y1_range": y1_range, "y2_range": y2_range})
+fig = make_subplots(
+    rows=2, cols=2, print_grid=False, horizontal_spacing=0.025, vertical_spacing=0.025, column_widths=[0.99, 0.01],
+    specs=[
+        [{"type": "xy", "secondary_y": True, "r": -0.01, "l": 0, "colspan": 1}, {}],
+        [{"type": "table", "t": 0.1, "b": -0.009, "r": -0.02, "colspan": 1}, {"type": "indicator", "r": -5}]
+    ]
+)
 
 fig_line_1 = go.Scatter(x=df["تاریخ"], y=df["بازدهی فعالیت"]*100, name="فعالیت",
                         line={"color": "#00ff00", "width": 5, "dash": "solid"})
@@ -218,12 +240,10 @@ fig.update_xaxes(tickfont=dict(family="B Nazanin", size=18), calendar="jalali", 
 
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", ticksuffix="% ", showgrid=False, zeroline=True, zerolinewidth=4, secondary_y=False,
-                 # range=y_range[0]["y1_range"],
-                 range=[-25, 90])
+                 range=range1)
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", secondary_y=True,
-                 # range=y_range[0]["y2_range"],
-                 range=[-2000, 7000])
+                 range=range2)
 fig.update_layout(legend={"x": 0.95, "y": 1})
 fig.update_layout(
     template="gridon",
@@ -231,4 +251,5 @@ fig.update_layout(
     margin=dict(l=50, r=25, t=50, b=50),
     height=1300,
     title=dict(text=f"<b>بازدهی تجمعی ماهانه از تاریخ  {start_dates}</b>", xanchor="center", font=dict(size=24)))
-fig.write_html("D:/database/trading_inteligence/trading_inteligence_chart_passive.html", config={"displayModeBar": False})
+fig.write_html("D:/database/trading_inteligence/trading_inteligence_chart_passive__.html", config={"displayModeBar": False})
+
