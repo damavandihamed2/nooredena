@@ -1,9 +1,9 @@
 import pandas as pd
 import tqdm, math, warnings, typing, pathlib
 
-from simulation.utils.data_func import get_asset_history, get_index_symbols, get_symbols_data
-from simulation.utils.utils import date_input_handler, buy, sell
-from simulation.utils.signal_func import signal
+from strategy_backtest.utils.data_func import get_asset_history, get_index_symbols, get_symbols_data
+from strategy_backtest.utils.utils import date_input_handler, buy, sell
+from strategy_backtest.utils.signal_func import signal
 
 
 warnings.filterwarnings("ignore")
@@ -169,12 +169,12 @@ if __name__ == "__main__":
                        "64942549055019553", "11427939669935844", "69067576215760005"]
     symbols = get_symbols_data()
 
-    # signal_id = total_index_id
-    # file_name = "total_index"
-    # funds = symbols[symbols["symbol_id"].isin(funds_symbol_id)]
-    # top30_stocks = get_index_symbols(index_id=top_30_index_id)
-    # top30_stocks = symbols[symbols["symbol_id"].isin(top30_stocks["symbol_id"].values.tolist())]
-    # symbols = pd.concat([top30_stocks, funds], axis=0, ignore_index=True)
+    signal_id = total_index_id
+    file_name = "total_index"
+    funds = symbols[symbols["symbol_id"].isin(funds_symbol_id)]
+    top30_stocks = get_index_symbols(index_id=top_30_index_id)
+    top30_stocks = symbols[symbols["symbol_id"].isin(top30_stocks["symbol_id"].values.tolist())]
+    symbols = pd.concat([top30_stocks, funds], axis=0, ignore_index=True)
 
     # signal_id, file_name = equal_index_id, "equal_index"
     # symbols = symbols[symbols["sector"] != "68"].sort_values(by="market_cap", ascending=False, ignore_index=True)
@@ -188,9 +188,9 @@ if __name__ == "__main__":
     # petrol_stocks = get_index_symbols(index_id=petrol_index_id)
     # symbols = symbols[symbols["symbol_id"].isin(petrol_stocks["symbol_id"].values.tolist())]
 
-    signal_id, file_name = chemical_index_id, "chemical_index"
-    chemical_stocks = get_index_symbols(index_id=chemical_index_id)
-    symbols = symbols[symbols["symbol_id"].isin(chemical_stocks["symbol_id"].values.tolist())]
+    # signal_id, file_name = chemical_index_id, "chemical_index"
+    # chemical_stocks = get_index_symbols(index_id=chemical_index_id)
+    # symbols = symbols[symbols["symbol_id"].isin(chemical_stocks["symbol_id"].values.tolist())]
 
     results_stock_signal = []
     results_total_index_signal = []
