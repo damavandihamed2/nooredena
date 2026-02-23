@@ -1,29 +1,22 @@
-import os
 import time
 import pyodbc
 import numpy as np
 from tqdm import tqdm
 from pandas import DataFrame
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 
-load_dotenv(dotenv_path=".env", override=False)
+ENV = dotenv_values(dotenv_path=".env")
+db_ip, db_name, db_user, db_pass = ENV["DB_SERVER"], ENV["DB_NAME"], ENV["DB_USERNAME"], ENV["DB_PASSWORD"]
 
-db_server_ip = os.getenv("DB_SERVER")
-db_server_name = os.getenv("DB_NAME")
-db_username = os.getenv("DB_USERNAME")
-db_password = os.getenv("DB_PASSWORD")
-
-authenticators = {
+public_user = {
     "public": {"username": "userpublic", "password": "Nooredena@public.123"}
 }
 
-def make_connection(
-        username: str = db_username,
-        password: str = db_password,
-        auto_commit: bool = True, timeout: int = 10, retries: int = 10, delay: int = 3
-) -> pyodbc.Connection | None:
-    conn_str = (f"DRIVER={{ODBC Driver 18 for SQL Server}}; SERVER={db_server_ip}; DATABASE={db_server_name}; "
+
+def make_connection(username: str = db_user, password: str = db_pass, auto_commit: bool = True,
+                    timeout: int = 10, retries: int = 10, delay: int = 3) -> pyodbc.Connection | None:
+    conn_str = (f"DRIVER={{ODBC Driver 18 for SQL Server}}; SERVER={db_ip}; DATABASE={db_name}; "
                 f"UID={username}; PWD={password}; Encrypt=No")
     for attempt in range(1, retries + 1):
         try:
