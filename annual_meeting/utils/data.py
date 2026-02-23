@@ -67,7 +67,7 @@ def get_trades_value(start_date: str, end_date: str, trade_type: Optional[Litera
     if trade_type is not None:
         trades = trades[trades["type"] == trade_type]
     trades = trades[["date", "value"]].groupby(by=["date"], as_index=False).sum()
-    trades.sort_values(by="value", ascending=True, inplace=True, ignore_index=True)
+    trades.sort_values(by="date", ascending=True, inplace=True, ignore_index=True)
     return trades
 
 ##################################################
