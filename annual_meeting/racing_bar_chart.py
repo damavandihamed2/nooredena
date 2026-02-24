@@ -1,8 +1,10 @@
+import pandas as pd
+import datetime, jdatetime
 import arabic_reshaper
 import bar_chart_race as bcr
 from bidi.algorithm import get_display
 
-from annual_meeting.utils.data import get_sectors_value_daily
+from annual_meeting.utils.data import get_sectors_value_daily, get_symbols_value_daily
 
 
 def fix_persian_text(text: str):
@@ -15,9 +17,24 @@ def summary(values, ranks):
     return {'x': .99, 'y': .05, 's': s, 'ha': 'right', 'size': 12}
 
 
-df = get_sectors_value_daily("1404/09/30", "1404/10/30")
+df = get_sectors_value_daily("1403/10/30", "1404/10/30")
+df_ = df.T
+df_.to_excel("./annual_meeting/animation_sectors_df.xlsx")
+
+
+df_symbols = get_symbols_value_daily("1403/10/30", "1404/10/30")
+df_symbols_ = df_symbols.T
+df_symbols_.to_excel("./annual_meeting/animation_symbols_df.xlsx")
+
+
+
+df["date"] = df.index
+df["date"] = df["date"].apply(lambda x: jdatetime.datetime.strptime(x, "%Y/%m/%d"))
+df.index = df["date"]
+df.drop(["date"], axis=1, inplace=True)
+
 df.columns = [fix_persian_text(c) for c in df.columns]
-df.index = [fix_persian_text(i) for i in df.index]
+# df.index = [fix_persian_text(i) for i in df.index]
 
 bcr.bar_chart_race(
     df,
@@ -26,20 +43,21 @@ bcr.bar_chart_race(
     filename="c:/users/h.damavandi/desktop/racing_chart_sectors.mp4",
 
     steps_per_period=20,
-    period_length=200,
+    period_length=100,
     interpolate_period=True,
 
     label_bars=True,
     bar_label_size=8,
-
-
-    period_label={'x': .99, 'y': .1, 'ha': 'right', 'color': 'red', 'family': 'B Mitra'},    # or True
     tick_label_size=10,
 
     title=fix_persian_text('روند تغییرات ارزش صنایع در پورتفولیو (مبالغ به میلیارد ریال می باشد)'),
     title_size='x-large',
-    shared_fontdict={'family': 'B Mitra', 'weight': 'bold', 'color': 'rebeccapurple'},
 
-    # period_fmt='%Y/%m',
+    # shared_fontdict={'family': 'B Mitra', 'weight': 'bold', 'color': 'rebeccapurple'},
+
+    period_label=True,
+    # period_label={'x': .99, 'y': .1, 'ha': 'right', 'color': 'red', 'family': 'B Mitra'},  # or True
+    period_fmt='%Y/%m/%d',
     period_summary_func=summary,
 )
+
