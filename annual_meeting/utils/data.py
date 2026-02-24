@@ -158,6 +158,33 @@ def get_portfolio_data_daily(start_date: str, end_date: str, main_portfolio: boo
 
 ##################################################
 
+def get_symbols_value_daily(start_date: str, end_date: str, main_portfolio: bool = True, prx_portfolio: bool = True,
+                            drop_weekends: bool = True, convert_to_br: bool = True) -> pd.DataFrame:
+    if (not main_portfolio) and (not prx_portfolio):
+        raise ValueError("both main and prx could not be False!")
+    query_symbols_value = (f"SELECT portfolio_id, date, symbol, SUM(gross_value_final_price) AS value FROM "
+                          f"[nooredenadb].[sigma].[portfolio] WHERE date >= '{start_date}' AND date <= '{end_date}'"
+                          f" GROUP BY portfolio_id, date, symbol ORDER BY date")
+    symbols_value = pd.read_sql(query_symbols_value, db_conn)
+    if main_portfolio and (not prx_portfolio):
+        symbols_value = symbols_value[symbols_value["portfolio_di"] ==1]
+    if (not main_portfolio) and prx_portfolio:
+        symbols_value = symbols_value[symbols_value["portfolio_di"] != 1]
+    if drop_weekends:
+        weekends = get_weekends_jalali()
+        weekends["is_weekend"] = True
+        symbols_value = symbols_value.merge(weekends, on="date", how="left").fillna({"is_weekend": False}, inplace=False)
+        symbols_value = symbols_value[~symbols_value["is_weekend"]].sort_values(by=["date", "symbol"], ignore_index=True)
+
+    symbols_value = symbols_value.drop(labels=["portfolio_id", "is_weekend"], axis=1, inplace=False).groupby(
+        by=["date", "symbol"], as_index=False).sum()
+    if convert_to_br:
+        symbols_value["value"] = (symbols_value["value"] / 1e9).round(0)
+    symbols_value_new_format = pd.pivot_table(symbols_value, index="date", columns="symbol", values="value", fill_value=0)
+    # symbols_value_new_format = sector_value_new_format.reset_index(drop=False, names=["date"], inplace=False)
+    return symbols_value_new_format
+
+
 def get_sectors_value_daily(start_date: str, end_date: str, main_portfolio: bool = True, prx_portfolio: bool = True,
                             drop_weekends: bool = True, convert_to_br: bool = True) -> pd.DataFrame:
     if (not main_portfolio) and (not prx_portfolio):
@@ -185,4 +212,3 @@ def get_sectors_value_daily(start_date: str, end_date: str, main_portfolio: bool
     sector_value_new_format = pd.pivot_table(sector_value, index="date", columns="sector", values="value", fill_value=0)
     # sector_value_new_format = sector_value_new_format.reset_index(drop=False, names=["date"], inplace=False)
     return sector_value_new_format
-
