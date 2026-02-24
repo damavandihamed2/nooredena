@@ -16,37 +16,37 @@ bar_numbers = 15
 dim_date = pd.read_sql("SELECT [Jalali_1] as date, [JWeekDay] FROM [nooredenadb].[extra].[dim_date]", db_conn)
 query_sector_value = ("SELECT date, SUM(value) AS value, sector FROM (SELECT [date], [gross_value_final_price] AS "
                       "value, CASE WHEN symbol = 'دارایکم' THEN 'بانکها و موسسات اعتباری' WHEN symbol = 'گنگین' THEN"
-                      " 'چندرشته ای صنعتی' ELSE sector END AS [sector] FROM [nooredenadb].[sigma].[sigma_portfolio] WHERE "
+                      " 'چندرشته ای صنعتی' ELSE sector END AS [sector] FROM [nooredenadb].[sigma].[portfolio] WHERE "
                       "date>='1402/10/30' AND date<'1403/11/01') AS TEMP GROUP BY date, sector ORDER BY date")
 sector_value = pd.read_sql(query_sector_value, db_conn)
 sectors_mapper = {
     'ماشین آلات و تجهیزات': "ماشین آلات",
     'بانکها و موسسات اعتباری': "بانک ها",
-    # 'چندرشته ای صنعتی': "",
-    # 'شیمیایی': "",
+    'چندرشته ای صنعتی': 'چندرشته ای صنعتی',
+    'شیمیایی': 'شیمیایی',
     'خودرو و قطعات': "خودرو",
     'سرمایه گذاریها': "سرمایه گذاری ها",
     'استخراج زغال سنگ': "زغال سنگ",
     'سیمان آهک گچ': "سیمان",
     'فلزات اساسی': "فلزات",
     'فرآورده های نفتی': "نفتی",
-    # 'فنی و مهندسی': "",
-    # 'دارویی': "",
+    'فنی و مهندسی': 'فنی و مهندسی',
+    'دارویی': 'دارویی',
     'استخراج کانه های فلزی': "معادن",
-    # 'ابزار پزشکی': "",
+    'ابزار پزشکی': 'ابزار پزشکی',
     'صندوق سرمایه گذاری قابل معامله': "صندوق",
-    # 'مخابرات': "",
+    'مخابرات': 'مخابرات',
     'عرضه برق،گاز،بخار و آب گرم': "یوتیلیتی",
     'بیمه و بازنشستگی': "بیمه",
     'لاستیک و پلاستیک': "لاستیک",
     'کاشی و سرامیک': "کاشی",
     'حمل و نقل انبارداری و ارتباطات ': "حمل و نقل",
-    # 'خرده فروشی': "",
-    # 'دستگاههای برقی': "",
+    'خرده فروشی': 'خرده فروشی',
+    'دستگاههای برقی': 'دستگاههای برقی',
     'غذایی بجز قند وشکر': "غذایی",
-    # 'رایانه': "",
+    'رایانه': 'رایانه',
     'زراعت و خدمات وابسته': "زراعی",
-    # 'اطلاعات و ارتباطات': "",
+    'اطلاعات و ارتباطات': 'اطلاعات و ارتباطات',
 }
 sector_value["sector"].replace(sectors_mapper, inplace=True)
 sector_color = pd.DataFrame({"sector": sector_value["sector"].unique().tolist(),
@@ -101,15 +101,15 @@ for day, d in zip(dates, dates):
 fig = go.Figure(
     data=[
         go.Bar(
-            x=n_frame["1402/10/30"]["value"],
-            y=n_frame["1402/10/30"]["sector"],
+            x=n_frame["1403/10/30"]["value"],
+            y=n_frame["1403/10/30"]["sector"],
             orientation='h',
             texttemplate='%{x:,.0f}',
             textfont={'size':16, "family": fnt, "weight": "bold"},
             textposition='outside',
             insidetextanchor='end',
             width=0.75,
-            marker={'color': n_frame["1402/10/30"]['color']}
+            marker={'color': n_frame["1403/10/30"]['color']}
         )
     ],
     layout=go.Layout(
@@ -132,7 +132,7 @@ fig = go.Figure(
             tickformat=",",
         ),
         yaxis=dict(
-            range=[len(n_frame["1402/10/30"]) - 0.5 - bar_numbers, len(n_frame["1402/10/30"]) - 0.5],
+            range=[len(n_frame["1403/10/30"]) - 0.5 - bar_numbers, len(n_frame["1403/10/30"]) - 0.5],
             autorange=False,
             tickfont=dict(
                 size=16,
@@ -141,7 +141,7 @@ fig = go.Figure(
             )
         ),
         title=dict(
-            text="ارزش صنعت در پرتفوی (میلیارد ریال)" + "<br>" + "1402/10/30",
+            text="ارزش صنعت در پرتفوی (میلیارد ریال)" + "<br>" + "1403/10/30",
             font=dict(
                 size=28,
                 family=fnt,
