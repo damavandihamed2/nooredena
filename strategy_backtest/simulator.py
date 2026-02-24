@@ -19,11 +19,11 @@ def get_strategy_return(
         max_share_of_market_trade: float,
 ) -> dict[str, float]:
 
-    # initial_balance = 10_000_000_000
-    # from_date = 1400_01_01
-    # asset_id_signal = "67130298613737946"
-    # asset_id_trade = "31316784129157162"
-    # asset_type = "309"
+    # initial_balance = 1_000_000_000
+    # from_date = 1403_01_01
+    # asset_id_signal = "32097828799138957"
+    # asset_id_trade = "17914401175772326"
+    # asset_type = "305"
     # buy_fix_income = True
     # max_share_of_market_trade = 0.1
 
