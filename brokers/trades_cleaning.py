@@ -215,7 +215,7 @@ query_options_data = ("SELECT call_symbol AS symbol, contract_size, strike_price
 options_data = pd.read_sql(query_options_data, db_conn)
 
 query_trades_last_options = ("SELECT date, portfolio_id, symbol, type, volume, value FROM "
-                             "[nooredenadb].[brokers].[trades_last] WHERE SUBSTRING(symbol, 1, 1) IN ('ض', 'ط')")
+                             "[nooredenadb].[brokers].[trades_last] WHERE symbol LIKE N'[هضط]%[0-9]'")
 trades_last_options = pd.read_sql(query_trades_last_options, db_conn)
 trades_last_options = trades_last_options.merge(options_data, on="symbol", how="left")
 trades_last_options["volume"] = trades_last_options["volume"] / trades_last_options["contract_size"]
