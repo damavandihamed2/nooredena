@@ -209,10 +209,13 @@ else:
 
 ###########################################################################################
 
-query_options_data = ("SELECT call_symbol AS symbol, contract_size, strike_price FROM [nooredenadb].[tsetmc]."
-                      "[options_data_today] UNION SELECT put_symbol AS symbol, contract_size, strike_price "
-                      "FROM [nooredenadb].[tsetmc].[options_data_today]")
-options_data = pd.read_sql(query_options_data, db_conn)
+options_data = pd.read_sql("SELECT call_symbol AS symbol, contract_size, strike_price FROM "
+                           "[nooredenadb].[tsetmc].[options_data_today] UNION SELECT put_symbol AS symbol, "
+                           "contract_size, strike_price FROM [nooredenadb].[tsetmc].[options_data_today]", db_conn)
+options_embedded_data = pd.read_sql("SELECT symbol, symbol_name strike_price, 1 contract_size FROM "
+                                    "[nooredenadb].[tsetmc].[symbols_data_today] WHERE yval=600", db_conn)
+options_embedded_data["strike_price"] = options_embedded_data["strike_price"].str.split("-", expand=True)[1].astype(int)
+options_data = pd.concat([options_data, options_embedded_data], axis=0, ignore_index=True)
 
 query_trades_last_options = ("SELECT date, portfolio_id, symbol, type, volume, value FROM "
                              "[nooredenadb].[brokers].[trades_last] WHERE symbol LIKE N'[هضط]%[0-9]'")
