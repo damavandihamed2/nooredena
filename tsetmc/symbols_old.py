@@ -10,7 +10,7 @@ from utils.database import make_connection, insert_to_database
 
 warnings.filterwarnings("ignore")
 print("************** Old Symbols **************" + "\n")
-logging.basicConfig(filename="D:/Python Projects/new_bi/log/symbols_old.log",
+logging.basicConfig(filename="D:/PythonProjects/new_bi/log/symbols_old.log",
                     level=logging.ERROR,
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)

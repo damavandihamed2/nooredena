@@ -9,15 +9,13 @@ warnings.filterwarnings("ignore")
 db_conn = make_connection()
 today = jdatetime.datetime.today().strftime('%Y/%m/%d')
 
+start_date = pd.read_sql("SELECT MAX(date) date FROM [nooredenadb].[brokers].[trades]", db_conn)["date"].iloc[0]
+
 ####################################################################################
 
-trades_tadbir_start = pd.read_sql("SELECT max(date) as date FROM [nooredenadb].[brokers].[trades]",
-                                  db_conn)["date"].iloc[0]
-trades_tadbir_start = jdatetime.datetime.strptime(trades_tadbir_start, "%Y/%m/%d").togregorian().strftime(
-    "%Y-%m-%d")
-trades_tadbir = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_tadbir] WHERE "
-                            f"TradeDate>='{trades_tadbir_start}'", db_conn)
-
+start_date_tadbir = jdatetime.datetime.strptime(start_date, "%Y/%m/%d").togregorian().strftime("%Y-%m-%d")
+trades_tadbir = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_tadbir] "
+                            f"WHERE TradeDate>='{start_date_tadbir}';", db_conn)
 if len(trades_tadbir) > 0:
     trades_tadbir["TradeSideTitle"].replace({"خرید": 1, "فروش": 2}, inplace=True)
     trades_tadbir["SymbolBoard"] = trades_tadbir["Symbol"].str[-1]
@@ -39,16 +37,14 @@ if len(trades_tadbir) > 0:
     trades_tadbir["is_ros"] = trades_tadbir["is_ros"] ^ trades_tadbir["is_paid_ros"]
     trades_tadbir.rename({"TradeDate": "date", "Symbol": "symbol", "Volume": "volume", "TradeSideTitle": "type",
                           "Price": "price", "SymbolBoard": "board", "NetPrice": "value"}, axis=1, inplace=True)
+    if trades_tadbir.empty: trades_tadbir = pd.DataFrame()
 else:
     trades_tadbir = pd.DataFrame()
 
 ####################################################################################
 
-trades_rayan_start = pd.read_sql(
-    "SELECT max(date) as date FROM [nooredenadb].[brokers].[trades]", db_conn)["date"].iloc[0]
 trades_rayan = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_rayan] where "
-                           f"transactionDate>='{trades_rayan_start}'", db_conn)
-
+                           f"transactionDate>='{start_date}'", db_conn)
 if len(trades_rayan) > 0:
     trades_rayan.drop(columns=["row_", "branch", "fcKey", "branchId", "csTypeName", "rowOrder", "debtor", "creditor",
                                "remaining"], inplace=True, errors="ignore")
@@ -79,13 +75,14 @@ if len(trades_rayan) > 0:
     trades_rayan.drop(columns=["order_id", "comments", "insMaxLCode", "is_ros_payment", "tmp"], inplace=True)
     trades_rayan.rename({"transactionDate": "date", "bourseAccount": "symbol", "qty": "volume", "csTypeId": "type",
                          "SymbolBoard": "board", "amount": "value"}, axis=1, inplace=True)
+    if trades_rayan.empty: trades_rayan = pd.DataFrame()
 else:
     trades_rayan = pd.DataFrame()
 
 ###########################################################################################
 
 trades_df = pd.concat([trades_tadbir, trades_rayan], axis=0, ignore_index=True)
-if len(trades_df) > 0:
+if not trades_df.empty:
     trades_df.replace({"is_ros": {True: 1, False: 0}, "is_paid_ros": {True: 1, False: 0}}, inplace=True, regex=False)
     trades_df["board"] = trades_df["board"].astype("int")
     trades_df.sort_values(["date", "broker_id", "type", "symbol"], ignore_index=True, inplace=True)
@@ -214,52 +211,54 @@ options_data = pd.read_sql("SELECT call_symbol AS symbol, contract_size, strike_
                            "contract_size, strike_price FROM [nooredenadb].[tsetmc].[options_data_today]", db_conn)
 options_embedded_data = pd.read_sql("SELECT symbol, symbol_name strike_price, 1 contract_size FROM "
                                     "[nooredenadb].[tsetmc].[symbols_data_today] WHERE yval=600", db_conn)
-options_embedded_data["strike_price"] = options_embedded_data["strike_price"].str.split("-", expand=True)[1].astype(int)
-options_data = pd.concat([options_data, options_embedded_data], axis=0, ignore_index=True)
 
-query_trades_last_options = ("SELECT date, portfolio_id, symbol, type, volume, value FROM "
-                             "[nooredenadb].[brokers].[trades_last] WHERE symbol LIKE N'[هضط]%[0-9]'")
-trades_last_options = pd.read_sql(query_trades_last_options, db_conn)
-trades_last_options = trades_last_options.merge(options_data, on="symbol", how="left")
-trades_last_options["volume"] = trades_last_options["volume"] / trades_last_options["contract_size"]
+if not options_embedded_data.empty:
+    options_embedded_data["strike_price"] = options_embedded_data["strike_price"].str.split("-", expand=True)[1].astype(int)
+    options_data = pd.concat([options_data, options_embedded_data], axis=0, ignore_index=True)
 
-query_portfolio = "SELECT * FROM [nooredenadb].[portfolio].[portfolio_options]"
-portfolio_options = pd.read_sql(query_portfolio, db_conn)
-portfolio_options_ = portfolio_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False)
+    query_trades_last_options = ("SELECT date, portfolio_id, symbol, type, volume, value FROM "
+                                 "[nooredenadb].[brokers].[trades_last] WHERE symbol LIKE N'[هضط]%[0-9]'")
+    trades_last_options = pd.read_sql(query_trades_last_options, db_conn)
+    trades_last_options = trades_last_options.merge(options_data, on="symbol", how="left")
+    trades_last_options["volume"] = trades_last_options["volume"] / trades_last_options["contract_size"]
 
-if (len(trades_last_options) > 0) and (trades_last_options["date"].iloc[0] == today):
-    portfolio_options_ = portfolio_options_.merge(
-        trades_last_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False),
-        on=["portfolio_id", "symbol", "type"], how="outer")
-    portfolio_options_.fillna({"amount": 0, "total_cost": 0, "volume": 0, "value": 0}, inplace=True)
-    portfolio_options_["amount"] = portfolio_options_["amount"] + portfolio_options_["volume"]
-    portfolio_options_["total_cost"] = portfolio_options_["total_cost"] + portfolio_options_["value"]
-    portfolio_options_.drop(labels=["volume", "value"], axis=1, inplace=True)
-    portfolio_options_["amount"] = portfolio_options_["amount"] * (((portfolio_options_["type"] == 1) * 2) - 1)
-    portfolio_options_["total_cost"] = portfolio_options_["total_cost"] * (((portfolio_options_["type"] == 1) * 2) - 1)
+    query_portfolio = "SELECT * FROM [nooredenadb].[portfolio].[portfolio_options]"
+    portfolio_options = pd.read_sql(query_portfolio, db_conn)
+    portfolio_options_ = portfolio_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False)
 
-    portfolio_options_ = portfolio_options_.groupby(by=["portfolio_id", "symbol"], as_index=False).sum()
-    portfolio_options_ = portfolio_options_[portfolio_options_["amount"] != 0].reset_index(drop=True, inplace=False)
-    portfolio_options_["type"] = ((portfolio_options_["amount"] < 0) * 1) + 1
-    portfolio_options_["amount"] = portfolio_options_["amount"].abs()
-    portfolio_options_["total_cost"] = portfolio_options_["total_cost"].abs()
-    portfolio_options_["date"] = today
-    portfolio_options_ = portfolio_options_[["date", "portfolio_id", "symbol", "type", "amount", "total_cost"]]
-    portfolio_options_ = portfolio_options_.merge(options_data, on="symbol", how="left")
+    if (len(trades_last_options) > 0) and (trades_last_options["date"].iloc[0] == today):
+        portfolio_options_ = portfolio_options_.merge(
+            trades_last_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False),
+            on=["portfolio_id", "symbol", "type"], how="outer")
+        portfolio_options_.fillna({"amount": 0, "total_cost": 0, "volume": 0, "value": 0}, inplace=True)
+        portfolio_options_["amount"] = portfolio_options_["amount"] + portfolio_options_["volume"]
+        portfolio_options_["total_cost"] = portfolio_options_["total_cost"] + portfolio_options_["value"]
+        portfolio_options_.drop(labels=["volume", "value"], axis=1, inplace=True)
+        portfolio_options_["amount"] = portfolio_options_["amount"] * (((portfolio_options_["type"] == 1) * 2) - 1)
+        portfolio_options_["total_cost"] = portfolio_options_["total_cost"] * (((portfolio_options_["type"] == 1) * 2) - 1)
 
-    crsr = db_conn.cursor()
-    crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_options_temp]")
-    crsr.close()
-    insert_to_database(dataframe=portfolio_options_, database_table="[nooredenadb].[portfolio].[portfolio_options_temp]")
-else:
-    portfolio_options_ = portfolio_options_.merge(options_data, on="symbol", how="left")
-    portfolio_options_.dropna(subset=["strike_price"], inplace=True, ignore_index=True)
-    portfolio_options_["date"] = today
+        portfolio_options_ = portfolio_options_.groupby(by=["portfolio_id", "symbol"], as_index=False).sum()
+        portfolio_options_ = portfolio_options_[portfolio_options_["amount"] != 0].reset_index(drop=True, inplace=False)
+        portfolio_options_["type"] = ((portfolio_options_["amount"] < 0) * 1) + 1
+        portfolio_options_["amount"] = portfolio_options_["amount"].abs()
+        portfolio_options_["total_cost"] = portfolio_options_["total_cost"].abs()
+        portfolio_options_["date"] = today
+        portfolio_options_ = portfolio_options_[["date", "portfolio_id", "symbol", "type", "amount", "total_cost"]]
+        portfolio_options_ = portfolio_options_.merge(options_data, on="symbol", how="left")
 
-    crsr = db_conn.cursor()
-    crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_options_temp]")
-    crsr.close()
-    insert_to_database(dataframe=portfolio_options_, database_table="[nooredenadb].[portfolio].[portfolio_options_temp]")
+        crsr = db_conn.cursor()
+        crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_options_temp]")
+        crsr.close()
+        insert_to_database(dataframe=portfolio_options_, database_table="[nooredenadb].[portfolio].[portfolio_options_temp]")
+    else:
+        portfolio_options_ = portfolio_options_.merge(options_data, on="symbol", how="left")
+        portfolio_options_.dropna(subset=["strike_price"], inplace=True, ignore_index=True)
+        portfolio_options_["date"] = today
+
+        crsr = db_conn.cursor()
+        crsr.execute("TRUNCATE TABLE [nooredenadb].[portfolio].[portfolio_options_temp]")
+        crsr.close()
+        insert_to_database(dataframe=portfolio_options_, database_table="[nooredenadb].[portfolio].[portfolio_options_temp]")
 
 
 ##########################################################################################

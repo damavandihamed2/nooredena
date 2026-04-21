@@ -8,7 +8,7 @@ from utils.database import make_connection, insert_to_database
 
 warnings.filterwarnings("ignore")
 print("************** sectors **************" + "\n")
-logging.basicConfig(filename="D:/Python Projects/new_bi/log/sectors.log", level=logging.ERROR,
+logging.basicConfig(filename="D:/PythonProjects/new_bi/log/sectors.log", level=logging.ERROR,
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
 dl = ["10523825119011581", "49579049405614711", "62752761908615603", "71704845530629737", "43754960038275285",

@@ -116,12 +116,12 @@ df["نفع فعالیت"] = [f"{df["نفع فعالیت"].iloc[i]:,}" for i in r
 
 df.rename(mapper={
     "نفع فعالیت": "نفع فعالیت (میلیارد ریال)",
-    "بازدهی فعالیت": "بازدهی فعالیت (درصد)",
-    "بازدهی عدم فعالیت": "بازدهی عدم فعالیت (درصد)",
-    "بازدهی شاخص کل": "بازدهی شاخص کل (درصد)",
-    "بازدهی شاخص هم وزن": "بازدهی هم وزن (درصد)",
-    "بازدهی شاخص سرمایه گذاری ها": "بازدهی سرمایه گذاری ها (درصد)",
-    "بازدهی شاخص 30 شرکت بزرگ": "بازدهی شاخص 30 شرکت بزرگ (درصد)",
+    "بازدهی فعالیت": "بازدهی فعالیت",
+    "بازدهی عدم فعالیت": "بازدهی عدم فعالیت",
+    "بازدهی شاخص کل": "بازدهی شاخص کل",
+    "بازدهی شاخص هم وزن": "بازدهی شاخص قیمت هم وزن",
+    "بازدهی شاخص سرمایه گذاری ها": "بازدهی شاخص سرمایه گذاری ها",
+    "بازدهی شاخص 30 شرکت بزرگ": "بازدهی شاخص 30 شرکت بزرگ",
 }, axis=1, inplace=True)
 
 df.drop(columns="start_date", inplace=True)
@@ -251,5 +251,5 @@ fig.update_layout(
     margin=dict(l=50, r=25, t=50, b=50),
     height=1300,
     title=dict(text=f"<b>بازدهی تجمعی ماهانه از تاریخ  {start_dates}</b>", xanchor="center", font=dict(size=24)))
-fig.write_html("D:/database/trading_inteligence/trading_inteligence_chart_passive__.html", config={"displayModeBar": False})
+fig.write_html("D:/database/trading_inteligence/trading_inteligence_chart_passive.html", config={"displayModeBar": False})
 

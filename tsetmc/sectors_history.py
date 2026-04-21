@@ -9,7 +9,7 @@ from utils.database import make_connection, insert_to_database
 
 warnings.filterwarnings("ignore")
 print("************** sectos history **************" + "\n")
-logging.basicConfig(filename="D:/Python Projects/new_bi/log/sectors_history.log", level=logging.ERROR,
+logging.basicConfig(filename="D:/PythonProjects/new_bi/log/sectors_history.log", level=logging.ERROR,
                     format='%(asctime)s --- %(levelname)s --- %(message)s --- %(lineno)d')
 logger = logging.getLogger(__name__)
 yesterday = int((datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y%m%d"))
