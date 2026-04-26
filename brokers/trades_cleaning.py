@@ -89,7 +89,7 @@ if not trades_df.empty:
     trades_df["symbol"].replace({"ی": "ي", "ک": "ك"}, regex=True, inplace=True)
     try:
         crsr = db_conn.cursor()
-        crsr.execute(f"DELETE FROM [nooredenadb].[brokers].[trades] WHERE date >= '{trades_rayan_start}';")
+        crsr.execute(f"DELETE FROM [nooredenadb].[brokers].[trades] WHERE date >= '{start_date}';")
         crsr.close()
         insert_to_database(dataframe=trades_df, database_table="[nooredenadb].[brokers].[trades]")
     except Exception as e:
