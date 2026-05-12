@@ -6,7 +6,7 @@ from utils import auth_token_hadler
 
 
 def get_api_address(address: str, api_app: str):
-    api_address = api_app + "." + ".".join(address.split(".")[-2:])
+    api_address = api_app + "." + ".".join(address.rstrip("/").split(".")[-2:])
     if "khobregan" in address:
         api_address = "khobregan-" + api_address
     elif "mebbco" in address:
