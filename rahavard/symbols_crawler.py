@@ -6,17 +6,19 @@ import warnings, jdatetime
 from utils.database import make_connection, insert_to_database
 
 
+
 warnings.filterwarnings("ignore")
 db_conn = make_connection()
 
-header_ipcheck = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/120.0.0.0 Safari/537.36"}
+##################################################
+
+header_ipcheck = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
 url1 = "https://rahavard365.com/api/v2/ip-check"
 res1 = rq.get(url=url1, headers=header_ipcheck)
 cookie1 = res1.headers["Set-Cookie"].split(";")[0]
 
-########################################################################################################
+##################################################
 
 header_stocks = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                'Chrome/126.0.0.0 Safari/537.36'}
@@ -24,7 +26,7 @@ stocks = rq.get(url="https://rahavard365.com/api/v2/market-data/stocks?last_trad
 stocks = pd.DataFrame(stocks.json()["data"])
 stocks = stocks[["name", "asset_id", "slug", "instrument_state", "instrument_description", "trade_date_time"]]
 
-########################################################################################################
+##################################################
 
 closed_stocks = rq.get(url="https://rahavard365.com/api/v2/market-data/closed-assets", headers=header_stocks)
 closed_stocks = pd.DataFrame(closed_stocks.json()["data"]["closed_asset_list"])
@@ -33,7 +35,7 @@ closed_stocks = closed_stocks[["name", "asset_id", "slug", "reason_of_close", "l
     {"reason_of_close": "instrument_description", "last_trade_date_time": "trade_date_time"}, axis=1, inplace=False)
 closed_stocks["instrument_state"] = ["closed"] * len(closed_stocks)
 
-########################################################################################################
+##################################################
 
 stocks = pd.concat([stocks, closed_stocks], axis=0, ignore_index=True)
 stocks["type"] = ["stock"] * len(stocks)
@@ -60,15 +62,15 @@ for s in tqdm(range(len(stocks))):
         except Exception as e:
             print(f"Error for {asset_id=} ({e})")
 
-########################################################################################################
+##################################################
 
 funds_etf = rq.get("https://rahavard365.com/api/v2/market-data/etf-funds?fund_type=1&category_id=all&last_trade=any",
                    headers=header_stocks)
 funds_etf = pd.DataFrame(funds_etf.json()["data"])
 funds_etf = funds_etf[["name", "asset_id", "slug", "instrument_state", "instrument_description", "trade_date_time"]]
-funds_etf["type"] = ["fund"] * len(funds_etf)
+funds_etf["type"] = "fund"
 
-########################################################################################################
+##################################################
 
 stocks = pd.concat([stocks, funds_etf], axis=0, ignore_index=True)
 stocks.rename({"name": "symbol", "instrument_state": "state", "instrument_description": "description",
@@ -80,3 +82,4 @@ crsr.close()
 
 insert_to_database(dataframe=stocks, database_table="[nooredenadb].[rahavard].[symbols]")
 
+##################################################
