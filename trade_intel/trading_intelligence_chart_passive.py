@@ -11,7 +11,7 @@ from utils.database import make_connection
 warnings.filterwarnings("ignore")
 db_conn = make_connection()
 
-start_dates = "1403/10/30"
+start_dates = "1404/10/30"
 dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", db_conn)
 df = dataframe[dataframe["start_date"] == start_dates]
 
@@ -91,7 +91,6 @@ fig_line_6 = go.Scatter(x=df["تاریخ"], y=df["بازدهی شاخص 30 شر�
                         line={"color": "#ff00ff", "width": 2, "dash": "dot"})
 
 df_area_1 = df[["تاریخ", "نفع فعالیت"]]
-# df_area["zeroline"] = [0] * len(df_area)
 df_area_new_1 = pd.DataFrame()
 for i in range(1, len(df_area_1) - 1):
     if df_area_1["نفع فعالیت"].iloc[i] * df_area_1["نفع فعالیت"].iloc[i + 1] < 0:
@@ -160,18 +159,18 @@ fig_indicator = go.Indicator(
 )
 
 fig_table = go.Table(header=dict(values=("<b>" + df_.columns + "<b>").tolist(),
-                                 font=dict(size=16, family="B Nazanin"),
+                                 font=dict(size=18, family="B Nazanin"),
                                  align="center",
                                  fill=dict(color=["#b7b7bf"] + ["#e7e7f0"] * 6)),
                      cells=dict(values=[df_[df_.columns[i]].values.tolist() for i in range(len(df_.columns))],
-                                font=dict(size=16, family="B Nazanin", color=table_colors),
+                                font=dict(size=20, family="B Nazanin", color=table_colors),
                                 format=[[""]
                                     # , [".1%"], [".1%"], [",.0f"], [".1%"], [".1%"], [".1%"]
                                         ],
                                 align="center",
                                 fill=dict(color=["#b7b7bf"] + ["#e7e7f0"] * 6),
                                 height=40),
-                     columnwidth=[3, 1, 1, 1, 1, 1, 1])
+                     columnwidth=[2, 2, 2, 2])
 
 # fig.add_trace(fig_chart_2, row=1, col=1, secondary_y=True)
 idx = 0
