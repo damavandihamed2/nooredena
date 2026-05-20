@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 try:
     filename = os.path.basename(__file__)
 except:
-    filename = "brokers_trades.py"
+    filename = "options_online.py"
 logger = get_logger(db_connection=db_conn, file_name=filename,
                     project_dir=os.path.dirname(os.path.abspath(sys.argv[0])))
 

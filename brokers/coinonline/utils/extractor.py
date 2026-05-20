@@ -71,13 +71,21 @@ def extract_trades_pagination(response_text: str) -> dict[str, int]:
     page_numbers = page_box.find('input', {"type": "submit", "class": "pagesizetitle", "value": "صفحه آخر"})
     if page_numbers:
         match = re.search(r'(\d+)', page_numbers.attrs["onclick"])
-        if match: page_numbers = int(match.group(1))
+        if match:
+            page_numbers = int(match.group(1))
     else:
         page_list = page_box.find_all('input',
                                       {"type": "submit", "class": "pagesizetitle", "name": "OnlineImeTradesPager"})
         page_list = [page for page in page_list if page.attrs["value"] != 'صفحه بعد']
-        match = re.search(r'(\d+)', page_list[-1].attrs["onclick"])
-        if match: page_numbers = int(match.group(1))
+
+        if page_list:
+            match = re.search(r'(\d+)', page_list[-1].attrs.get("onclick", ""))
+            if match:
+                page_numbers = int(match.group(1))
+            else:
+                page_numbers = 0
+        else:
+            page_numbers = 0
     page_numbers = max(page_numbers, current_page)
     return {
         "page_numbers": page_numbers,

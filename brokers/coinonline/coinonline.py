@@ -11,7 +11,7 @@ from brokers.coinonline.utils.extractor import extract_captcha_tag, extract_hash
 
 class CoinOnline:
     def __init__(self, address: str, portfolio_id: int, username: str, password: str):
-        self.portfolio_id = portfolio_id
+        self.portfolio_id = int(portfolio_id)
 
         self.website_address = address.replace("https://", "").rstrip("/")
         self._username = username
@@ -57,16 +57,17 @@ class CoinOnline:
     def _check_old_tokens(self) -> None:
         cookies_ = self._get_old_token()
         if cookies_:
-            response = rq.get(f'https://{self.website_address}/Customer/GetLastLoginInfo',
-                              cookies=cookies_, headers={**self.base_headers, **self.data_headers})
             try:
+                response = rq.get(f'https://{self.website_address}/Customer/GetLastLoginInfo',
+                                  cookies=cookies_, headers={**self.base_headers, **self.data_headers})
                 response.json()
                 print("old tokens are valid")
                 self._user_is_login = True
                 self.auth_cookies = cookies_
+            except rq.exceptions.ConnectionError:
+                print("old tokens has expired")
             except rq.exceptions.JSONDecodeError:
                 print("old tokens has expired")
-                pass
 
 
     def _get_login_page(self):
@@ -119,6 +120,11 @@ class CoinOnline:
                                                  captcha_value=self.captcha_value)
 
 
+    def get_symbols(self):
+        response = rq.get(url=f'https://{self.website_address}/Customer/GetOrderedExchangeSymbolsJson',
+                           cookies=self.auth_cookies, headers={**self.base_headers})
+        return response
+
     def _fetch_data(self, url: str, data: dict | None = None) -> rq.Response:
         if data:
             response = rq.post(
@@ -138,9 +144,7 @@ class CoinOnline:
             url=f'https://{self.website_address}/Customer/OnlineIMETrades', data=data)
         return self.get_trades_each_page_response
 
-    def get_trades(
-            self, start_date: str, end_date: str, page_size: int = 20
-    ):
+    def get_trades(self, start_date: str, end_date: str, page_size: int = 20):
         response = self._get_trades_each_page(
             start_date=start_date, end_date=end_date, page=1, page_size=page_size)
         trades = extract_trades(response.text)
@@ -151,4 +155,9 @@ class CoinOnline:
                                                       page=page, page_size=page_size)
                 trades += extract_trades(response_text=response.text)
         return trades
+
+
+
+
+
 
