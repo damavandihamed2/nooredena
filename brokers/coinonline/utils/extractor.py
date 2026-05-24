@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 
 header_name_mapper = {
     'ردیف': "row", 'شماره معامله': "trade_id", 'نماد': "symbol", 'طرف سفارش': "trade_type", 'قیمت': "price",
-    'حجم': "volume", 'تاریخ': "date", 'زمان': "time", 'نرم افزار': "platform", 'وضعیت': "status"
-}
+    'حجم': "volume", 'تاریخ': "date", 'زمان': "time", 'نرم افزار': "platform", 'وضعیت': "status",
+    'شماره سند': "document_id", 'شرح': "description", 'بدهکار': "debtor", 'بستانکار': "creditor"}
 
 
 def extract_hash_code(response_text: str) -> str | None:
@@ -35,7 +35,7 @@ def extract_hdn_str_challenge(response_text: str) -> str | None:
     return hdn_str_challenge
 
 
-def extract_trades(response_text: str) -> list[dict]:
+def extract_table_data(response_text: str) -> list[dict]:
 
     soup = BeautifulSoup(response_text, 'html.parser')
     table = soup.find('table', {"id": "orderlist", "class": "GridTable"})
@@ -48,8 +48,10 @@ def extract_trades(response_text: str) -> list[dict]:
     table_rows = [[c.text for c in r.find_all("td")] for r in table_rows]
 
     data = [{
-        table_header[cn]: r[cn].strip().split(" ")[0] if table_header[cn] == "symbol"
-        else int(r[cn].strip().replace(",", "")) if r[cn].strip().replace(",", "").isdigit()
+        table_header[cn]: r[cn].strip().split(" ")[0]
+        if table_header[cn] == "symbol"
+        else int(r[cn].strip().replace(",", "").replace(")", "").replace("(", ""))
+        if r[cn].strip().replace(",", "").replace(")", "").replace("(", "").isdigit()
         else r[cn].strip().replace(",", "")
         for cn in range(len(table_header))
         } for r in table_rows]
@@ -57,7 +59,7 @@ def extract_trades(response_text: str) -> list[dict]:
     return data
 
 
-def extract_trades_pagination(response_text: str) -> dict[str, int]:
+def extract_pagination(response_text: str) -> dict[str, int]:
     soup = BeautifulSoup(response_text, 'html.parser')
 
     page_box = soup.find('div', {"class": "page-box"})

@@ -5,7 +5,8 @@ from utils import captcha_handler
 from utils import auth_token_hadler
 
 from brokers.coinonline.utils.encrypt import encrypt_password
-from brokers.coinonline.utils.extractor import extract_captcha_tag, extract_hash_code, extract_hdn_str_challenge, extract_trades, extract_trades_pagination
+from brokers.coinonline.utils.extractor import (extract_captcha_tag, extract_hash_code, extract_hdn_str_challenge,
+                                                extract_table_data, extract_pagination)
 
 
 
@@ -147,17 +148,34 @@ class CoinOnline:
     def get_trades(self, start_date: str, end_date: str, page_size: int = 20):
         response = self._get_trades_each_page(
             start_date=start_date, end_date=end_date, page=1, page_size=page_size)
-        trades = extract_trades(response.text)
-        pagination = extract_trades_pagination(response.text)
+        trades = extract_table_data(response.text)
+        pagination = extract_pagination(response.text)
         if pagination["page_numbers"] > 1:
             for page in range(2, pagination["page_numbers"] + 1):
                 response = self._get_trades_each_page(start_date=start_date, end_date=end_date,
                                                       page=page, page_size=page_size)
-                trades += extract_trades(response_text=response.text)
+                trades += extract_table_data(response_text=response.text)
         return trades
 
 
+    def _get_statements_each_page(self, start_date: str, end_date: str, page: int, page_size: int) -> rq.Response:
+        data = {'txtStartDate': start_date, 'txtEndDate': end_date,
+                'OnlineImeTradesPagerHidden': f"{page}", 'OnlineImeTradespageIndex': f'{page_size}'}
+        self.get_trades_each_page_response = self._fetch_data(
+            url=f'https://{self.website_address}/Customer/OnlineIMEStatements', data=data)
+        return self.get_trades_each_page_response
 
 
+    def get_statements(self, start_date: str, end_date: str, page_size: int = 20):
+        response = self._get_statements_each_page(
+            start_date=start_date, end_date=end_date, page=1, page_size=page_size)
+        statements = extract_table_data(response.text)
+        pagination = extract_pagination(response.text)
+        if pagination["page_numbers"] > 1:
+            for page in range(2, pagination["page_numbers"] + 1):
+                response = self._get_statements_each_page(
+                    start_date=start_date, end_date=end_date, page=page, page_size=page_size)
+                statements += extract_table_data(response_text=response.text)
+        return statements
 
 
