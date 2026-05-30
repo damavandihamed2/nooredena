@@ -6,11 +6,11 @@ import PIL.Image as pil
 from math import ceil, floor
 from datetime import datetime, timezone
 
-from khobregan.env_manager import EnvManager
 
+from utils.env_manager import EnvManager
 
 manager = EnvManager(path="D:/PythonProjects/nooredena/khobregan")
-
+# manager = EnvManager(path=Path(__file__).parent.resolve())
 
 def calculate_volume(price: int, balance: int, commission: float) -> int:
     volume = floor(balance / (price * (1 + commission)))
