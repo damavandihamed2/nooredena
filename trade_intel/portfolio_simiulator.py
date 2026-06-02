@@ -44,11 +44,11 @@ query_cashflow = (f"SELECT * FROM [nooredenadb].[company].[cashflow] where date 
                   f"and (meeting_date <= '{start_day}' or debtor > 0) order by date")
 cashflow = pd.read_sql(query_cashflow, db_conn)
 
-# query_avalhami_raw = ("SELECT [JalaliDate] date, [SellNAVPerShare] final_price, ISNULL(TEMP.funds_unit, 0) amount, "
+# query_avalhami_raw = ("SELECT [jalaliDate] date, [sellNAVPerShare] final_price, ISNULL(TEMP.funds_unit, 0) amount, "
 #                       "ISNULL(TEMP.cost, 0) total_cost FROM [nooredenadb].[extra].[avalhami_nav] LEFT JOIN (SELECT date,"
 #                       " SUM((CASE WHEN type=1 THEN funds_unit ELSE funds_unit * -1 END)) funds_unit, SUM((CASE WHEN "
 #                       "type=1 THEN value ELSE cost * -1 END)) AS cost FROM [nooredenadb].[extra].[avalhami_trades] "
-#                       "GROUP BY date) AS TEMP ON avalhami_nav.JalaliDate=TEMP.date")
+#                       "GROUP BY date) AS TEMP ON avalhami_nav.jalaliDate=TEMP.date")
 # avalhami_df = pd.read_sql(query_avalhami_raw, db_conn)
 # avalhami_df = avalhami_df[(avalhami_df["date"] > start_day) & (avalhami_df["amount"] < 0)]
 # avalhami_df["creditor"] = avalhami_df["amount"] * avalhami_df["final_price"] * -1
