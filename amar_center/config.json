@@ -1,0 +1,37 @@
+{
+    "28579": {
+        "stat_id": 28579,
+        "save_name": "consumption_index",
+        "publish_date": "1405/03/13"
+    },
+    "52141": {
+        "stat_id": 52141,
+        "save_name": "production_index",
+        "publish_date": "1405/02/27"
+    },
+    "22428": {
+        "stat_id": 22428,
+        "save_name": "mean_price_index",
+        "publish_date": "1405/03/13"
+    },
+    "57092": {
+        "stat_id": 57092,
+        "save_name": "building_index",
+        "publish_date": "1404/10/15"
+    },
+    "22572": {
+        "stat_id": 22572,
+        "save_name": "unemployment_rate",
+        "publish_date": "1405/02/20"
+    },
+    "22569": {
+        "stat_id": 22569,
+        "save_name": "participation_rate",
+        "publish_date": "1405/02/20"
+    },
+    "54306": {
+        "stat_id": 54306,
+        "save_name": "national_accounts",
+        "publish_date": "1404/12/06"
+    }
+}
