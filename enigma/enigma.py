@@ -13,16 +13,25 @@ class EnigmaAgent:
     report_types = ["balance_sheet", "income_statement", "monthly_report", "codal_watch", "products_and_sales",
                     "cost", "inventory_turnover", "raw_materials", "production_overhead"]
     default_headers = {
-        "Accept-Encoding": "gzip, deflate, br", "Content-Type": "application/json", "Origin": "https://panel.enigma.ir",
-        "Accept-Language": "fa", "Sec-Ch-Ua-Mobile": "?0", "Sec-Ch-Ua-Platform": '"Windows"', "Sec-Fetch-Dest": "empty",
-        "Connection": "keep-alive", "Host": "core.enigma.ir", "Accept": "application/json", "Sec-Fetch-Mode": "cors",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115"
-                      ".0.0.0 Safari/537.36", "Referer": "https://panel.enigma.ir/", "Sec-Fetch-Site": "same-site",
-        "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"'}
+        'accept': 'application/json',
+        'content-type': 'application/json',
+        'accept-language': 'fa',
+        'app-name': 'panel',
+        'cache-control': 'no-cache',
+        'origin': 'https://panel.enigma.ir',
+        'pragma': 'no-cache',
+        'priority': 'u=1, i',
+        'referer': 'https://panel.enigma.ir/',
+        'sec-ch-ua': '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'sec-fetch-dest': 'empty',
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-site': 'same-site',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36'}
     check_token_url = "https://core.live.enigma.ir/api/v1/options/user_preferences/"
     captcha_url = "https://core.enigma.ir/api/v1/captcha/"
     captcha_headers = {**default_headers, "Content-Length": "2"}
-    captcha_payload = "{}"
     login_url = "https://core.enigma.ir/api/v1/account/login/"
     login_headers = {**default_headers}
     refresh_token_url = "https://core.enigma.ir/api/v1/account/refresh/"
@@ -30,9 +39,10 @@ class EnigmaAgent:
     commodity_all_url = "https://core.enigma.ir/api/v1/commodities/market_data/"
     codal_watch_url = "https://core.enigma.ir/api/v1/data_export/codal_watch/"
     market_indices_url = "https://core.live.enigma.ir/api/v1/dashboard/market_indices/"
-    search_url = f"https://core.enigma.ir/api/v1/securities/search/?security_type=1&search="
+    search_url = "https://core.enigma.ir/api/v1/securities/search/"
     watchlist_url = "https://core.live.enigma.ir/api/v1/market_watch/watchlist/all/"
     ws_url = "wss://core.live.enigma.ir/ws/v1"
+    shareholders_url = "https://core.enigma.ir/api/v1/shareholders/security"
 
     def __init__(self, username, password):
 
@@ -55,6 +65,7 @@ class EnigmaAgent:
         self.symbol_data = self.symbol_messages = None
         self.dashboard_url = self.dashboard_headers = self.dashboard_ws_conn = None
         self.dashboard_data = self.dashboard_messages = None
+        self.shareholders_headers = self.response_shareholders = self.shareholders_data = None
 
     def _handle_response(self, response: rq.Response,
                          refresh_func: Optional[Callable[[], None]],
@@ -75,6 +86,7 @@ class EnigmaAgent:
             print("Unknown error has happened.", response.status_code, " - ", response.text)
         return True
 
+
     def _get_old_token(self) -> [str, str]:
         tokens = auth_token_hadler.get_tokens(app="enigma", web_address="enigma")
         if tokens:
@@ -85,9 +97,11 @@ class EnigmaAgent:
                 pass
         return "", ""
 
+
     def _update_tokens(self, access_token: str, refresh_token: str) -> None:
         json_data = {"access_token": access_token, "refresh_token": refresh_token}
         auth_token_hadler.update_tokens(app="enigma", web_address="enigma", json_data=json_data)
+
 
     def _refresh_access_token(self) -> None:
         self.refresh_token_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
@@ -98,10 +112,13 @@ class EnigmaAgent:
             self.access_token = json.loads(self.refresh_token_response.text)["data"]["access"]
             self._update_tokens(access_token=self.access_token, refresh_token=self.refresh_token)
 
+
     def check_old_tokens(self):
         self.access_token, self.refresh_token = self._get_old_token()
         self.check_token_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+        print("checking old tokens")
         self.check_token_response = rq.get(url=EnigmaAgent.check_token_url, headers=self.check_token_headers)
+        print("checking done")
         if self.check_token_response.status_code == 200:
             self.is_old_token_valid = True
         elif self.check_token_response.status_code == 401:
@@ -113,43 +130,51 @@ class EnigmaAgent:
         else:
             self.is_old_token_valid = False
 
+
     def get_captcha(self) -> None:
         self.captcha_id = str(datetime.datetime.now().timestamp())
-        captcha_response = rq.post(url=EnigmaAgent.captcha_url, headers=EnigmaAgent.captcha_headers, data=EnigmaAgent.captcha_payload)
+        print("fetching captcha to login")
+        captcha_response = rq.post(url=EnigmaAgent.captcha_url, headers=EnigmaAgent.captcha_headers, json={}, verify=True)
+        print("captcha fetched")
         captcha_data = captcha_response.json()["data"]
         self.captcha_image, self.captcha_key = captcha_data["captcha_image"], captcha_data["captcha_key"]
+        print("saving captcha to database")
         captcha_handler.save_captcha(captcha_type="enigma", captcha_image=self.captcha_image,
                                      captcha_id=self.captcha_id)
 
-    def login(self) -> None:
-        self.check_old_tokens()
-        if self.is_old_token_valid:
-            pass
-        else:
-            self.get_captcha()
-            self.captcha_value = captcha_handler.open_captcha(captcha_type="enigma", captcha_id=self.captcha_id)
-            self.login_payload = json.dumps({"emailOrPhone": self.username, "phone_number": self.username,
-                                            "password": self.password, "captcha_value": self.captcha_value,
-                                            "captcha_key": self.captcha_key})
-            login_response = rq.post(url=EnigmaAgent.login_url, headers=EnigmaAgent.login_headers, data=self.login_payload)
-            self.login_response = login_response
-            if self.login_response.status_code == 200:
-                self.access_token = json.loads(self.login_response.text)["data"]["token"]["access"]
-                self.refresh_token = json.loads(self.login_response.text)["data"]["token"]["refresh"]
-                captcha_handler.update_captcha_value(captcha_type="enigma", captcha_id=self.captcha_id,
-                                                     captcha_value=self.captcha_value)
-                self._update_tokens(access_token=self.access_token, refresh_token=self.refresh_token)
+    def __login(self):
+        self.get_captcha()
+        self.captcha_value = captcha_handler.open_captcha(captcha_type="enigma", captcha_id=self.captcha_id)
+        self.login_payload = json.dumps({"emailOrPhone": self.username, "phone_number": self.username,
+                                         "password": self.password, "captcha_value": self.captcha_value,
+                                         "captcha_key": self.captcha_key})
+        login_response = rq.post(url=EnigmaAgent.login_url, headers=EnigmaAgent.default_headers,
+                                 data=self.login_payload)
+        self.login_response = login_response
+        if self.login_response.status_code == 200:
+            self.access_token = json.loads(self.login_response.text)["data"]["token"]["access"]
+            self.refresh_token = json.loads(self.login_response.text)["data"]["token"]["refresh"]
+            captcha_handler.update_captcha_value(captcha_type="enigma", captcha_id=self.captcha_id,
+                                                 captcha_value=self.captcha_value)
+            self._update_tokens(access_token=self.access_token, refresh_token=self.refresh_token)
+            print("login successful.")
 
-    def __commodities_request(self, commodities_list: list[str]) -> rq.Response:
-        self.commodity_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
-        self.commodity_payload = json.dumps(
-            [{"first_operand_slug": commodities_list[i], "index": i + 1} for i in range(len(commodities_list))])
-        response = rq.post(url=EnigmaAgent.commodity_url, headers=self.commodity_headers, data=self.commodity_payload)
-        return response
+    def login(self, check_old_token: bool = True) -> None:
+        if check_old_token:
+            self.check_old_tokens()
+            if self.is_old_token_valid:
+                print("Old token is still valid.")
+                return
+            print("Old token is not valid. Logging in again...")
+        self.__login()
 
     def get_commodities(self, commodities_list: list[str]) -> None:
         while True:
-            self.commodity_response = self.__commodities_request(commodities_list=commodities_list)
+            self.commodity_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+            self.commodity_payload = json.dumps(
+                [{"first_operand_slug": commodities_list[i], "index": i + 1} for i in range(len(commodities_list))])
+            self.commodity_response = rq.post(url=EnigmaAgent.commodity_url, headers=self.commodity_headers,
+                               data=self.commodity_payload)
             result = self._handle_response(
                 response=self.commodity_response, refresh_func=self._refresh_access_token, name_err=commodities_list[0])
             if result is True: break
@@ -157,14 +182,11 @@ class EnigmaAgent:
         if "data" in self.commodity_response.json().keys():
             self.commodity_data = self.commodity_response.json()["data"]
 
-    def __commodity_all_request(self) -> rq.Response:
-        self.commodity_all_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
-        response = rq.get(url=EnigmaAgent.commodity_all_url, headers=self.commodity_all_headers)
-        return response
 
     def get_commodity_all(self):
         while True:
-            self.commodity_all_response = self.__commodity_all_request()
+            self.commodity_all_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+            self.commodity_all_response = rq.get(url=EnigmaAgent.commodity_all_url, headers=self.commodity_all_headers)
             result = self._handle_response(
                 response=self.commodity_all_response, refresh_func=self._refresh_access_token)
             if result is True: break
@@ -172,47 +194,55 @@ class EnigmaAgent:
         if "data" in self.commodity_all_response.json().keys():
             self.commodity_all_data = self.commodity_all_response.json()["data"]
 
-    def __codal_watch_request(self) -> rq.Response:
-        self.codal_watch_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
-        response = rq.get(url=EnigmaAgent.codal_watch_url, headers=self.codal_watch_headers)
-        return response
 
     def get_codal_watch(self):
         while True:
-            self.codal_watch_response = self.__codal_watch_request()
+            self.codal_watch_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+            self.codal_watch_response = rq.get(url=EnigmaAgent.codal_watch_url, headers=self.codal_watch_headers)
             result = self._handle_response(response=self.codal_watch_response, refresh_func=self._refresh_access_token)
             if result is True: break
             else: pass
         if "data" in self.codal_watch_response.json().keys():
             self.codal_watch_data = self.codal_watch_response.json()["data"]
 
-    def __market_indices_request(self) -> rq.Response:
-        self.market_indices_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
-        response = rq.get(url=EnigmaAgent.market_indices_url, headers=self.market_indices_headers)
-        return response
 
     def get_market_indices(self):
         while True:
-            self.market_indices_response = self.__market_indices_request()
+            self.market_indices_headers = {**EnigmaAgent.default_headers,
+                                           "Authorization": f"Bearer {self.access_token}"}
+            self.market_indices_response = rq.get(
+                url=EnigmaAgent.market_indices_url, headers=self.market_indices_headers)
             result = self._handle_response(
                 response=self.market_indices_response, refresh_func=self._refresh_access_token)
             if result is True: break
             else: pass
         self.market_indices_data = self.market_indices_response.json()
 
-    def __search_request(self, symbol: str) -> rq.Response:
-        self.search_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
-        response = rq.get(url=EnigmaAgent.search_url + f"{symbol}", headers=self.search_headers)
-        return response
 
     def search(self, symbol: str):
         while True:
-            self.search_response = self.__search_request(symbol=symbol)
+            self.search_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+            params = {'search': symbol.replace("ك", "ک").replace("ي", "ی"),
+                      # 'security_type': ['1', '4', '10', '5']
+                      }
+            self.search_response = rq.get(url=EnigmaAgent.search_url, headers=self.search_headers, params=params, timeout=5)
             result = self._handle_response(response=self.search_response, refresh_func=self._refresh_access_token)
             if result is True: break
             else: pass
         if "data" in self.search_response.json().keys():
             self.search_data = self.search_response.json()["data"]
+
+    def get_shareholders(self, symbol_id: str):
+        while True:
+            self.shareholders_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+            self.response_shareholders = rq.get(
+                url=f'{self.shareholders_url}/{symbol_id}/combined/', headers=self.shareholders_headers)
+
+            result = self._handle_response(response=self.response_shareholders, refresh_func=self._refresh_access_token)
+            if result is True: break
+            else: pass
+        if "data" in self.response_shareholders.json().keys():
+            self.shareholders_data = self.response_shareholders.json()["data"]
 
     def __report_request(self, report_type: Literal[*report_types], symbol_id: str,
                          start_date: str, end_date: str) -> rq.Response:
@@ -235,6 +265,7 @@ class EnigmaAgent:
 
         return response
 
+
     def get_report(self, report_type: Literal[*report_types], symbol_id: str, start_date: str, end_date: str) -> None:
         while True:
             self.report_response = self.__report_request(report_type=report_type, symbol_id=symbol_id,
@@ -245,18 +276,18 @@ class EnigmaAgent:
         if "data" in self.report_response.json().keys():
             self.report_data = self.report_response.json()["data"]
 
-    def __watchlist_request(self) -> rq.Response:
-        self.watchlist_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
-        response = rq.get(url=EnigmaAgent.watchlist_url, headers=self.watchlist_headers)
-        return response
 
     def get_watchlist(self) -> None:
         while True:
-            self.watchlist_response = self.__watchlist_request()
+            self.watchlist_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
+            self.watchlist_response = rq.get(url=EnigmaAgent.watchlist_url, headers=self.watchlist_headers)
             result = self._handle_response(response=self.watchlist_response, refresh_func=self._refresh_access_token)
-            if result is True: break
-            else: pass
+            if result is True:
+                break
+            else:
+                pass
         self.watchlist_data = self.watchlist_response.json()
+
 
     def _symbol_ws(self, symbol_code: str) -> websocket.WebSocket:
 
