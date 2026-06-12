@@ -11,7 +11,7 @@ authenticator = [
 enigma_agent = EnigmaAgent(
     username=authenticator[1]["username"],
     password=authenticator[1]["password"])
-enigma_agent.login(check_old_token=False)
+enigma_agent.login(use_old_token=False)
 
 # enigma_agent.get_watchlist()
 # watchlist_data = enigma_agent.watchlist_data
@@ -133,7 +133,7 @@ authenticator = [
 enigma_agent = EnigmaAgent(
     username=authenticator[1]["username"],
     password=authenticator[1]["password"])
-enigma_agent.login(check_old_token=False)
+enigma_agent.login(use_old_token=False)
 
 # enigma_agent.get_watchlist()
 # watchlist_data = enigma_agent.watchlist_data

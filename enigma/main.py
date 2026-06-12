@@ -12,7 +12,7 @@ authenticator = [
 enigma_agent = EnigmaAgent(
     username=authenticator[1]["username"],
     password=authenticator[1]["password"])
-enigma_agent.login(check_old_token=True)
+enigma_agent.login(use_old_token=True)
 
 
 symbols = pd.read_sql("SELECT * FROM [nooredenadb].[enigma].[symbols] WHERE industryId IN (13, 27, 23, 43, 44, 53) AND"
@@ -32,3 +32,4 @@ for i in tqdm(range(1, len(symbols))):
     l_df = pd.DataFrame(l)
     df_ = pd.concat([df_, l_df], axis=0, ignore_index=True)
     insert_to_database(l_df, "[nooredenadb].[enigma].[shareholders]", loading=False)
+

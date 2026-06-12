@@ -113,7 +113,7 @@ class EnigmaAgent:
             self._update_tokens(access_token=self.access_token, refresh_token=self.refresh_token)
 
 
-    def check_old_tokens(self):
+    def check_old_tokens(self) -> bool:
         self.access_token, self.refresh_token = self._get_old_token()
         self.check_token_headers = {**EnigmaAgent.default_headers, "Authorization": f"Bearer {self.access_token}"}
         print("checking old tokens")
@@ -129,6 +129,7 @@ class EnigmaAgent:
                 self.is_old_token_valid = False
         else:
             self.is_old_token_valid = False
+        return self.is_old_token_valid
 
 
     def get_captcha(self) -> None:
@@ -159,14 +160,14 @@ class EnigmaAgent:
             self._update_tokens(access_token=self.access_token, refresh_token=self.refresh_token)
             print("login successful.")
 
-    def login(self, check_old_token: bool = True) -> None:
-        if check_old_token:
-            self.check_old_tokens()
-            if self.is_old_token_valid:
-                print("Old token is still valid.")
-                return
-            print("Old token is not valid. Logging in again...")
+
+    def login(self, use_old_token: bool = True) -> None:
+        if use_old_token and self.check_old_tokens():
+            print("Old token is still valid.")
+            return
+        print("Old token is not valid. Logging in again...")
         self.__login()
+
 
     def get_commodities(self, commodities_list: list[str]) -> None:
         while True:
