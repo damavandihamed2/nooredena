@@ -10,16 +10,20 @@ authenticator = [
     {"username": "09021003706", "password": "1003706Ali"},
 ]
 enigma_agent = EnigmaAgent(
-    username=authenticator[1]["username"],
-    password=authenticator[1]["password"])
+    username=authenticator[0]["username"],
+    password=authenticator[0]["password"])
 enigma_agent.login(use_old_token=True)
 
 
-symbols = pd.read_sql("SELECT * FROM [nooredenadb].[enigma].[symbols] WHERE industryId IN (13, 27, 23, 43, 44, 53) AND"
-                      " id NOT IN (SELECT distinct(symbolId) FROM [nooredenadb].[enigma].[shareholders])", db_conn)
+i_1 = [13, 25, 27, 23, 34, 39, 42, 43, 44, 49, 53, 56, 57, 66]
+i_2 = []
 
-df_ = pd.DataFrame()
-for i in tqdm(range(1, len(symbols))):
+symbols = pd.read_sql("SELECT * FROM [nooredenadb].[enigma].[symbols] "
+                      f"WHERE industryId IN {str(tuple(i_2))}"
+                      " AND id NOT IN (SELECT distinct(symbolId) FROM [nooredenadb].[enigma].[shareholders])",
+                      db_conn)
+
+for i in tqdm(range(len(symbols))):
     symbol_id = symbols["id"].iloc[i]
     response_shareholders = rq.get(
         url=f'https://core.enigma.ir/api/v1/shareholders/security/{symbol_id}/combined/',
@@ -30,6 +34,5 @@ for i in tqdm(range(1, len(symbols))):
          "volume": d.get("volume"), "value": d.get("value"),
          "sharePercent": d.get("percent"), "symbolId": symbol_id} for d in data]
     l_df = pd.DataFrame(l)
-    df_ = pd.concat([df_, l_df], axis=0, ignore_index=True)
     insert_to_database(l_df, "[nooredenadb].[enigma].[shareholders]", loading=False)
 
