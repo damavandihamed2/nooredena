@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import math, time, warnings, jdatetime
+import math, warnings, jdatetime
 
 from utils.database import make_connection, insert_to_database
 
@@ -189,8 +189,6 @@ if (len(trades_last) > 0) and (trades_last["date"].iloc[0] == today):
     portfolio_["date"] = today
     portfolio_ = portfolio_[["date", "symbol", "amount", "total_cost", "total_cost_sep", "sub_sector", "portfolio_id"]]
     if (portfolio_["amount"] < 0).sum() > 0:
-        print("Some sold stocks doesn't exist in portfolio, please check and try again!")
-        time.sleep(5)
         raise ValueError("Some sold stocks doesn't exist in portfolio, please check and try again!")
 
     portfolio_ = portfolio_[portfolio_["amount"] > 0].reset_index(drop=True, inplace=False)
