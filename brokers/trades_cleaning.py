@@ -16,7 +16,7 @@ start_date = pd.read_sql("SELECT MAX(date) date FROM [nooredenadb].[brokers].[tr
 start_date_tadbir = jdatetime.datetime.strptime(start_date, "%Y/%m/%d").togregorian().strftime("%Y-%m-%d")
 trades_tadbir = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_tadbir] "
                             f"WHERE TradeDate>='{start_date_tadbir}';", db_conn)
-if len(trades_tadbir) > 0:
+if not trades_tadbir.empty:
     trades_tadbir["TradeSideTitle"].replace({"خرید": 1, "فروش": 2}, inplace=True)
     trades_tadbir["SymbolBoard"] = trades_tadbir["Symbol"].str[-1]
     trades_tadbir["Symbol"] = trades_tadbir["Symbol"].str[:-1]
@@ -45,7 +45,8 @@ else:
 
 trades_rayan = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_rayan] where "
                            f"transactionDate>='{start_date}'", db_conn)
-if len(trades_rayan) > 0:
+
+if not trades_rayan.empty:
     trades_rayan.drop(columns=["row_", "branch", "fcKey", "branchId", "csTypeName", "rowOrder", "debtor", "creditor",
                                "remaining"], inplace=True, errors="ignore")
     trades_rayan = trades_rayan[~trades_rayan["comments"].str.split(expand=True)[0].isin(["تفاوت", "پذيره"])]
@@ -164,7 +165,7 @@ portfolio["sub_sector"].fillna("", inplace=True)
 sub_sectors = portfolio[["symbol", "sub_sector"]].drop_duplicates(
     inplace=False, ignore_index=True).rename({"sub_sector": "subsector"}, axis=1, inplace=False)
 
-if (len(trades_last) > 0) and (trades_last["date"].iloc[0] == today):
+if (not trades_last.empty) and (trades_last["date"].iloc[0] == today):
 
     trades_last["volume"] = trades_last["volume"] * (((trades_last["type"] == 1) * 2) - 1)
     trades_last["cost"] = trades_last["total_cost"].fillna(trades_last["value"], inplace=False)
@@ -224,7 +225,7 @@ query_portfolio = "SELECT * FROM [nooredenadb].[portfolio].[portfolio_options]"
 portfolio_options = pd.read_sql(query_portfolio, db_conn)
 portfolio_options_ = portfolio_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False)
 
-if (len(trades_last_options) > 0) and (trades_last_options["date"].iloc[0] == today):
+if (not trades_last_options.empty) and (trades_last_options["date"].iloc[0] == today):
     portfolio_options_ = portfolio_options_.merge(
         trades_last_options.drop(labels=["date", "contract_size", "strike_price"], axis=1, inplace=False),
         on=["portfolio_id", "symbol", "type"], how="outer")
