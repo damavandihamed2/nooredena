@@ -208,3 +208,4 @@ __marimo__/
 
 .idea
 *.xlsx
+.DS_Store
