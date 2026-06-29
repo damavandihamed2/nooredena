@@ -2,7 +2,7 @@ import json
 from collections import defaultdict
 import psycopg2
 
-JSON_PATH = "/Users/hameddamavandi/Documents/metadata.json"
+JSON_PATH = "./postgres_migration/metadata.json"
 
 PG_CONFIG = {
     "host": "194.180.11.115",
