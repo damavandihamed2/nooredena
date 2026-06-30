@@ -8,6 +8,9 @@ warnings.filterwarnings("ignore")
 symbols_market_cap = pd.read_excel("./mci/racing_bar_chart/data.xlsx")
 symbols_market_cap = symbols_market_cap[["symbol", "date", "market_cap"]]
 
+
+
+
 dates = symbols_market_cap["date"].unique().tolist()
 df = pd.DataFrame()
 for date in dates:
