@@ -7,7 +7,7 @@ from collections import defaultdict
 
 
 
-JSON_PATH = "/Users/hameddamavandi/Documents/metadata.json"
+JSON_PATH = "./postgres_migration/metadata.json"
 
 PG_CONFIG = {
     "host": "194.180.11.115",
@@ -101,32 +101,6 @@ def copy_chunk(pg_conn, schema, table, columns, rows):
     cur.copy_expert(sql, buffer)
     pg_conn.commit()
 
-# def copy_chunk(pg_conn, schema, table, columns, rows):
-#
-#     buffer = io.StringIO()
-#
-#     for r in rows:
-#         line = "\t".join("" if v is None else str(v) for v in r)
-#         buffer.write(line + "\n")
-#
-#     buffer.seek(0)
-#
-#     cols = ",".join(f'"{c}"' for c in columns)
-#
-#     sql = f"""
-#     COPY "{schema}"."{table}" ({cols})
-#     FROM STDIN WITH (
-#         FORMAT text,
-#         DELIMITER E'\\t',
-#         NULL ''
-#     )
-#     """
-#
-#     cur = pg_conn.cursor()
-#     cur.copy_expert(sql, buffer)
-#     pg_conn.commit()
-#
-
 def migrate_table(sql_conn, pg_conn, schema, table, columns):
 
     print(f"Migrating {schema}.{table}")
@@ -160,7 +134,8 @@ def main():
     pg_conn = connect_postgres()
 
     for (schema, table), cols in tables.items():
-        if schema == "tsetmc" and table == "symbols":
+        if schema == "commodity":
+
             column_names = [c["column_name"] for c in cols]
 
             migrate_table(
@@ -179,3 +154,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+"""
+[
+    # excluded
+    "symbols_data_today", "symbols_detail_data", "symbols_data_daily", "symbol_beta", "symbols_data",
+    "stock_historical_data",
+    "sector_detail_data", "sector_detail_data_daily", "sector_detail_data_today", "sector_historical_data",
+    "raw_shareholders", "daily_shareholders_change", "funds_reserves_change", "funds_shareholding_change",
+    "indices_data", "indices_data_today", "indices_return",
+    "market_data", "market_data_today", "market_return",
+    "options_data_daily", "options_data_today"
+
+    # included
+    "market_data_daily", "indices", "indices_history", "symbols", "symbols_clienttype", "symbols_history",
+    "symbols_dividend", "symbols_capital_change", "symbols_ros", "symbols_ros_clienttype",
+    "symbols_ros_history", "symbols_trade_history"
+]
+"""
