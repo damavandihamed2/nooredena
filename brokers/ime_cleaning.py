@@ -51,3 +51,15 @@ if not df.empty:
     crsr.execute(f"DELETE FROM [nooredenadb].[brokers].[trades_ime] WHERE date >= '{last_date}'")
     insert_to_database(df, "[nooredenadb].[brokers].[trades_ime]")
 
+##################################################
+CDCs = ["GoldBar", "GoldCoin", "CopperCthd", "SilverBar", "Bitumen", "KMCT9", "IronOrePlt", "SteelRebar", "ZincIngot"]
+
+portfolio_ime = pd.read_sql(f"SELECT * FROM [nooredenadb].[portfolio].[portfolio_ime]", db_conn)
+last_date = portfolio_ime["date"].iloc[0]
+
+trades = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_ime] "
+                     f"WHERE symbol IN {str(tuple(CDCs))} AND date > '{last_date}'", db_conn)
+
+
+
+
