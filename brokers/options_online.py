@@ -23,7 +23,7 @@ logger = get_logger(db_connection=db_conn, file_name=filename,
 brokers_list = pd.read_sql("SELECT bc.broker_id, bc.portfolio_id, bc.username, bc.password, b.type_online, "
                            "b.address_online FROM [nooredenadb].[brokers].[brokers_credential] bc LEFT JOIN "
                            "nooredenadb.brokers.brokers b ON bc.broker_id = b.broker_id WHERE bc.system_type=1 "
-                           "AND bc.active=1 AND bc.option_active=1", db_conn)
+                           "AND bc.active=1 AND bc.option_active=1 AND bc.market_type=1", db_conn)
 
 today = jdatetime.date.today().strftime("%Y/%m/%d")
 last_date_omex = get_last_date(broker_type="omex", db_conn=db_conn, db_style=False)
