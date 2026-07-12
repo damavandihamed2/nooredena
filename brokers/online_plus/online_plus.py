@@ -50,10 +50,13 @@ class OnlinePlusAgent:
             self.check_token_response = rq.get(url=f"https://{self.api}.{self.website_address}.ir/Web/V1/Accounting/Remain",
                                                headers=self.header,cookies={'AuthCookie_OnlineCookie': cookies_})
             if self.check_token_response.status_code == 200:
-                self._user_is_login = True
-                self.loginResponseStatus = 200
-                self.auth_cookie = cookies_
-                self.remain = self.check_token_response.json()["Data"]
+                try:
+                    self.remain = self.check_token_response.json()["Data"]
+                    self._user_is_login = True
+                    self.loginResponseStatus = 200
+                    self.auth_cookie = cookies_
+                except Exception as e:
+                    self._user_is_login = False
             else:
                 self._user_is_login = False
         except Exception as e:
@@ -112,19 +115,24 @@ class OnlinePlusAgent:
                     json=self.login_payload,
                     headers=self.header
                 )
-                if (self.login_response.status_code == 200) and self.login_response.json()["IsSuccessfull"]:
-                    self.auth_token = self.login_response.json()["Data"]["Token"]
-                    self.ls_token = self.login_response.json()["Data"]["LsToken"]
-                    self.auth_cookie = self.login_response.headers["Set-Cookie"].split(
-                        "AuthCookie_OnlineCookie=")[1].split(";")[0]
-                captcha_handler.update_captcha_value(
-                    captcha_type="online_plus",
-                    captcha_id=self.captcha_id,
-                    captcha_value=self.captcha_value
-                )
-                self._update_token(cookies=self.auth_cookie)
-                self._user_is_login = True
-                self.loginResponseStatus = 200
+                if self.login_response.status_code == 200:
+                    if self.login_response.json()["IsSuccessfull"]:
+                        self.auth_token = self.login_response.json()["Data"]["Token"]
+                        self.ls_token = self.login_response.json()["Data"]["LsToken"]
+                        self.auth_cookie = self.login_response.headers["Set-Cookie"].split(
+                            "AuthCookie_OnlineCookie=")[1].split(";")[0]
+                        captcha_handler.update_captcha_value(
+                            captcha_type="online_plus",
+                            captcha_id=self.captcha_id,
+                            captcha_value=self.captcha_value
+                        )
+                        self._update_token(cookies=self.auth_cookie)
+                        self._user_is_login = True
+                        self.loginResponseStatus = 200
+                    else:
+                        raise Exception(f"Failed to login - {self.login_response.json()["MessageDesc"]}")
+                else:
+                    raise Exception(f"Failed to login - {self.login_response.status_code}")
             except Exception as e:
                 raise Exception(f"Failed to login - {e}")
 
@@ -151,7 +159,8 @@ if __name__ == "__main__":
     from utils.database import insert_to_database
 
     agent = OnlinePlusAgent(
-        address="mellatbroker",
+        address="https://silver.mellatbroker.ir/",
+        portfolio_id=1,
         username="mot30000949",
         password="fx3mn!kzK"
     )
