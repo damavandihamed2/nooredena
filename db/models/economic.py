@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, BigInteger, DateTime, Float, Text
+from sqlalchemy import Column, BigInteger, DateTime, Float, Text, String
 from .base import Base
 
 
@@ -93,3 +93,15 @@ class EconomicQuarterlyNationalAccounts(Base):
     seasonFa: Optional[str] = Column(Text, nullable=True)
     year: Optional[str] = Column(Text, nullable=False, primary_key=True)
     t: Optional[str] = Column(Text, nullable=True)
+
+
+class ExtraCbiRepoRate(Base):
+    __tablename__ = "cbi_repo_rate"
+    __table_args__ = {"schema": "extra"}
+
+    date: Optional[str] = Column(String(50), nullable=False, primary_key=True)
+    repo_rate: Optional[float] = Column(Float, nullable=True)
+    min_repo_rate: Optional[float] = Column(Float, nullable=True)
+    max_standing_facilities: Optional[float] = Column(Float, nullable=True)
+    min_standing_facilities: Optional[float] = Column(Float, nullable=True)
+
