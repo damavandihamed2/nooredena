@@ -53,17 +53,6 @@ class ExtraCaptchaImages(Base):
     captcha_id: Optional[str] = Column(String(255), nullable=False, primary_key=True)
 
 
-class ExtraCbiRepoRate(Base):
-    __tablename__ = "cbi_repo_rate"
-    __table_args__ = {"schema": "extra"}
-
-    date: Optional[str] = Column(String(50), nullable=False, primary_key=True)
-    repo_rate: Optional[float] = Column(Float, nullable=True)
-    min_repo_rate: Optional[float] = Column(Float, nullable=True)
-    max_standing_facilities: Optional[float] = Column(Float, nullable=True)
-    min_standing_facilities: Optional[float] = Column(Float, nullable=True)
-
-
 class ExtraClosedDays(Base):
     __tablename__ = "closed_days"
     __table_args__ = {"schema": "extra"}
