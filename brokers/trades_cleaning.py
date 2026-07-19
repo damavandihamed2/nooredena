@@ -212,8 +212,13 @@ options_embedded_data = pd.read_sql("SELECT symbol, symbol_name strike_price, 1 
                                     "[nooredenadb].[tsetmc].[symbols_data_today] WHERE yval=600", db_conn)
 
 if not options_embedded_data.empty:
-    options_embedded_data["strike_price"] = options_embedded_data["strike_price"].str.split("-", expand=True)[1].astype(int)
-    options_data = pd.concat([options_data, options_embedded_data], axis=0, ignore_index=True)
+    try:
+        options_embedded_data["strike_price"] = options_embedded_data["strike_price"].str.split(
+            "-", expand=True)[1].astype(int)
+        options_data = pd.concat([options_data, options_embedded_data], axis=0, ignore_index=True)
+    except Exception as e:
+        print(e)
+        pass
 
 query_trades_last_options = ("SELECT date, portfolio_id, symbol, type, volume, value FROM "
                              "[nooredenadb].[brokers].[trades_last] WHERE symbol LIKE N'[هضط]%[0-9]'")
