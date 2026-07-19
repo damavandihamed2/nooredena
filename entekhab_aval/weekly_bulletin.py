@@ -90,7 +90,7 @@ merket_cap = merket_cap.merge(dim_date[["deven", "date"]], on="deven", how="left
 ##################################################
 
 repo_rate = pd.read_sql("SELECT REPLACE(date, '/', '-') AS date, repo_rate FROM "
-                        "[nooredenadb].[extra].[cbi_repo_rate] ORDER BY date", db_conn)
+                        "[nooredenadb].[economic].[cbi_repo_rate] ORDER BY date", db_conn)
 
 ##################################################
 
