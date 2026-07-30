@@ -17,7 +17,7 @@ class BrokersRayanhamafza:
         self.pass_ = password
 
         self.login_page_url = url + "Account/Login"
-        self.captcha_url = url + "Captcha"
+        self.captcha_url = url + "/api/brokerage/Captcha"
         self.captcha_headers = None
         self.account_url = url + "api/customer/Account"
         self.remaining_asset_url = url + "api/Customer/RemainingAsset"
@@ -28,6 +28,7 @@ class BrokersRayanhamafza:
         self.captcha_content = None
         self.brokerageCustomerPanelSession = None
         self.captcha_id = None
+        self.captcha_tracking_number = None
 
         self.captcha_value = None
         self.brokerageCustomerPanelSessionCustomer = None
@@ -57,25 +58,29 @@ class BrokersRayanhamafza:
             "cookie": "BrokerageCustomerPanel_AntiforgeryCookie={self.brokerageCustomerPanelAntiforgeryCookie}"
         }
         captcha_response = rq.get(url=self.captcha_url, headers=self.captcha_headers)
-        self.captcha_content = captcha_response.content
-        self.brokerageCustomerPanelSession = captcha_response.headers["set-cookie"].split(
-            "BrokerageCustomerPanel.Session=")[1].split(";")[0]
+
+
+        self.captcha_content = captcha_response.json()["data"]
+        self.captcha_tracking_number = captcha_response.json()["trackingNumber"]
+        # self.brokerageCustomerPanelSession = captcha_response.headers["set-cookie"].split(
+        #     "BrokerageCustomerPanel.Session=")[1].split(";")[0]
         captcha_handler.save_captcha(captcha_type="rayanhamafza", captcha_image=self.captcha_content,
-                                     captcha_id=self.captcha_id, b64decode=False)
+                                     captcha_id=self.captcha_id, b64decode=True)
 
     def login(self):
         self.captcha()
         self.captcha_value = captcha_handler.open_captcha(captcha_type="rayanhamafza", captcha_id=self.captcha_id)
-        account_payload = f"Username={self.user_}&Password={self.pass_}&Captcha={self.captcha_value}&" \
-                          f"Rayan_AntiforgeryField={self.rayanAntiforgeryField}"
+        account_payload = (f"Username={self.user_}&Password={self.pass_}&Captcha={self.captcha_value}&"
+                           f"CaptchaTrackingNumber={self.captcha_tracking_number}&LoginType=StaticPassword&"
+                           f"Rayan_AntiforgeryField={self.rayanAntiforgeryField}")
         account_header = {
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'Cookie': f'BrokerageCustomerPanel_AntiforgeryCookie={self.brokerageCustomerPanelAntiforgeryCookie};'
-                      f'BrokerageCustomerPanel.Session={self.brokerageCustomerPanelSession};',
+            'Cookie': f'BrokerageCustomerPanel_AntiforgeryCookie={self.brokerageCustomerPanelAntiforgeryCookie};',
+                      # f'BrokerageCustomerPanel.Session={self.brokerageCustomerPanelSession};',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/129.0.0.0 Safari/537.36'}
         account_response = rq.post(url=self.account_url, headers=account_header, data=account_payload)
-        if account_response.status_code == 200:
+        if (account_response.status_code == 200) and (account_response.json()["success"]):
             try:
                 captcha_handler.update_captcha_value(captcha_type="rayanhamafza", captcha_id=self.captcha_id,
                                                      captcha_value=self.captcha_value)
@@ -83,6 +88,9 @@ class BrokersRayanhamafza:
                 print(e)
             self.brokerageCustomerPanelSessionCustomer = account_response.headers["Set-Cookie"].split(
                 "BrokerageCustomerPanel.Session.Customer=")[1].split(";")[0]
+            self.brokerageCustomerPanelSession = account_response.headers["Set-Cookie"].split(
+                "BrokerageCustomerPanel.Session=")[1].split(";")[0]
+
             self.loginResponseStatus = 200
         else:
             self.loginResponseStatus = account_response.status_code
