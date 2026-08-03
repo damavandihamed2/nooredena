@@ -41,14 +41,14 @@ def capital_increase(params: CapChangeParams) -> dict[str, int]:
     bonus = int((params.amount * (params.reserve / params.old_share)) // 1)
     ros = int((params.amount * (params.contribution / params.old_share)) // 1)
     cost = (params.total_cost + (1000 * ros)) / (params.amount + bonus + ros)
-    cost_share = round(cost * params.amount)
-    cost_bonus = round(cost * bonus)
+    cost_share = int(round(cost * params.amount))
+    cost_bonus = int(round(cost * bonus))
     cost_ros = params.total_cost - (cost_share + cost_bonus)
     old_cap = params.old_share * params.price
     if params.premium == 0:
         adj_price = int(((old_cap + (1000 * params.contribution)) / new_share) // 1)
     else:
-        adj_price = ((old_cap + (1000 * (params.contribution + params.premium + params.reserve))) / new_share) // 1
+        adj_price = int(((old_cap + (1000 * (params.contribution + params.premium + params.reserve))) / new_share) // 1)
     return {
         "adj_price": adj_price,
         "ros_price": adj_price - 1000,
