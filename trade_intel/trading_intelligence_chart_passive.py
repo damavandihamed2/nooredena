@@ -170,7 +170,7 @@ fig_table = go.Table(header=dict(values=("<b>" + df_.columns + "<b>").tolist(),
                                 align="center",
                                 fill=dict(color=["#b7b7bf"] + ["#e7e7f0"] * 6),
                                 height=40),
-                     columnwidth=[2, 2, 2, 2])
+                     columnwidth=[2.5, 2, 2, 2])
 
 # fig.add_trace(fig_chart_2, row=1, col=1, secondary_y=True)
 idx = 0
@@ -237,6 +237,8 @@ fig.add_trace(fig_indicator, row=2, col=2)
 
 fig.update_xaxes(tickfont=dict(family="B Nazanin", size=18), calendar="jalali", tickformat="%Y/%m/%d", showgrid=False, tickangle=45)
 
+range1 = [-20, 35]
+range2 = [-600, 1050]
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", ticksuffix="% ", showgrid=False, zeroline=True, zerolinewidth=4, secondary_y=False,
                  range=range1)
