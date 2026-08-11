@@ -20,9 +20,7 @@ class BrokersRayanhamafza:
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                                   'Chrome/129.0.0.0 Safari/537.36'}
 
-        url = "https://parsian.irbrokersite.ir/"
-        username = "44280113440"
-        password = "npdjA5Jmq9"
+
 
         self.url = url
         self.username = username
@@ -71,7 +69,9 @@ class BrokersRayanhamafza:
             'BrokerageCustomerPanel_AntiforgeryCookie=')[1].split(';')[0]
 
     def captcha(self):
+
         self.login_page()
+
         self.captcha_id = str(jdatetime.datetime.now().timestamp())
         self.captcha_headers = {
             "cookie": f"BrokerageCustomerPanel_AntiforgeryCookie={self.brokerageCustomerPanelAntiforgeryCookie}"
@@ -82,9 +82,13 @@ class BrokersRayanhamafza:
         captcha_handler.save_captcha(captcha_type="rayanhamafza", captcha_image=self.captcha_content,
                                      captcha_id=self.captcha_id, b64decode=True)
 
+
     def login(self):
+
         self.captcha()
+
         self.captcha_value = captcha_handler.open_captcha(captcha_type="rayanhamafza", captcha_id=self.captcha_id)
+
         account_payload = (f"Username={self.username}&Password={self.password}&Captcha={self.captcha_value}&"
                            f"CaptchaTrackingNumber={self.captcha_tracking_number}&LoginType=StaticPassword&"
                            f"Rayan_AntiforgeryField={self.rayanAntiforgeryField}")
@@ -108,58 +112,6 @@ class BrokersRayanhamafza:
         else:
             self.loginResponseStatus = account_response.status_code
 
-    def get_trades(self, asset_type: Literal["stock", "option"], from_date: str, to_date: str):
-
-        type_mapper = {"stock": 1, "option": 3}
-        if asset_type not in ["stock", "option"]:
-            raise ValueError("asset_type must be either 'stock' or 'option'")
-
-        self.trades_start_date = from_date
-        self.trades_end_date = to_date
-        if self.loginResponseStatus != 200:
-            self.login()
-        else:
-            pass
-        trades_url = self.trades_url + f"&Domain={type_mapper[asset_type]}&FromDate={self.trades_start_date}&ToDate={self.trades_end_date}"
-        trades_headers = {
-            **self.headers_,
-            'Cookie': f'BrokerageCustomerPanel_AntiforgeryCookie={self.brokerageCustomerPanelAntiforgeryCookie};'
-                      f'BrokerageCustomerPanel.Session={self.brokerageCustomerPanelSession};'
-                      f'BrokerageCustomerPanel.Session.Customer={self.brokerageCustomerPanelSessionCustomer};'}
-        trades_response = rq.get(url=trades_url, headers=trades_headers)
-        if trades_response.status_code == 200:
-            try:
-                trades_response = trades_response.json()
-                self.trades = trades_response["data"]["result"]
-                self.customer_last_remain = trades_response["data"]["customerLastRemain"]
-            except Exception as e:
-                print(e)
-                return "Getting trades failed."
-        else:
-            return trades_response.status_code
-
-    def get_assets(self):
-        if self.loginResponseStatus != 200:
-            self.login()
-        else:
-            pass
-        remaining_asset_headers = {
-            **self.headers_,
-            'Cookie': f'BrokerageCustomerPanel_AntiforgeryCookie={self.brokerageCustomerPanelAntiforgeryCookie};'
-                      f'BrokerageCustomerPanel.Session={self.brokerageCustomerPanelSession};'
-                      f'BrokerageCustomerPanel.Session.Customer={self.brokerageCustomerPanelSessionCustomer};'}
-        remaining_asset_response = rq.get(url=self.remaining_asset_url, headers=remaining_asset_headers)
-        if remaining_asset_response.status_code == 200:
-            try:
-                remaining_asset_response = remaining_asset_response.json()
-                self.assets = remaining_asset_response
-                self.assets_value = sum([asset["stockValue"] for asset in self.assets])
-            except Exception as e:
-                print(e)
-                return "Getting portfolio failed."
-        else:
-            return remaining_asset_response.status_code
-
     def get_purchase_upper_bound(self):
         if self.loginResponseStatus != 200:
             self.login()
@@ -182,3 +134,48 @@ class BrokersRayanhamafza:
 
 
 
+
+import io
+import base64
+import easyocr
+import requests as rq
+import PIL.Image as pil
+import warnings, jdatetime
+from utils import captcha_handler
+
+warnings.filterwarnings("ignore")
+
+url = "https://parsian.irbrokersite.ir/"
+username = "44280113440"
+password = "npdjA5Jmq9"
+
+login_response = rq.get(url=url + "Account/Login")
+rayanAntiforgeryField = login_response.text.split('name="Rayan_AntiforgeryField" type="hidden" value="')[1].split('" /></form>')[0]
+brokerageCustomerPanelAntiforgeryCookie = login_response.headers["set-cookie"].split('BrokerageCustomerPanel_AntiforgeryCookie=')[1].split(';')[0]
+
+captcha_headers = {"cookie": f"BrokerageCustomerPanel_AntiforgeryCookie={brokerageCustomerPanelAntiforgeryCookie}"}
+captcha_response = rq.get(url=url + "/api/brokerage/Captcha", headers=captcha_headers)
+captcha_content = captcha_response.json()["data"]
+captcha_tracking_number = captcha_response.json()["trackingNumber"]
+image = base64.b64decode(captcha_content)
+
+img = pil.open(io.BytesIO(image))
+img.save("./brokers/tmp/captcha.jpg")
+img.resize(size=(img.size[0] * 3, img.size[1] * 3)).show()
+img.close()
+
+reader = easyocr.Reader(["en"], gpu=False)
+result = reader.readtext(image=image, detail=1, allowlist="+0123456789")
+result_2 = reader.readtext(image="./brokers/tmp/captcha.jpg", detail=1, allowlist="+0123456789")
+
+
+
+
+
+
+image_path = "D:/PythonProjects/portfolios/images/4.png"
+reader = easyocr.Reader(["en"], gpu=False)
+result = reader.readtext(image_path, detail=0,
+                         # allowlist="+0123456789"
+                         )
+print(result)
