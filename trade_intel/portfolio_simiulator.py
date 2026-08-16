@@ -8,7 +8,7 @@ from trade_intel.utils.funcs import get_last_date, get_next_date, capital_increa
 
 
 start_day = "1404/10/30"
-end_day = "1405/05/01"
+end_day = "1405/05/25"
 warnings.filterwarnings("ignore")
 one_day = jdatetime.timedelta(days=1)
 db_conn = make_connection()
@@ -542,7 +542,7 @@ while True:
 ##################################################################################
 
 
-files_address = "D:/database/portfolio simulation/1405-10-30/06-month"
+files_address = "D:/database/portfolio simulation/1405-10-30/07-month"
 
 dps_table.to_excel(f"{files_address}/dps_table.xlsx", index=False)
 dps_funds_table.to_excel(f"{files_address}/dps_funds_table.xlsx", index=False)
