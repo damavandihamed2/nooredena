@@ -26,12 +26,10 @@ brokers_list = pd.read_sql("SELECT bc.broker_id,bc.portfolio_id,bc.username,bc.p
                            "nooredenadb.brokers.brokers b ON bc.broker_id = b.broker_id WHERE bc.system_type=2 "
                            "AND bc.active=1", db_conn)
 today = jdatetime.date.today().strftime("%Y/%m/%d")
-thirty_days_ago = jdatetime.datetime.now() - jdatetime.timedelta(days=30)
+two_weeks_ago = (jdatetime.date.today() - jdatetime.timedelta(days=14)).strftime("%Y/%m/%d")
 
 ##########################################################################
 
-start_date_rayan = pd.read_sql("SELECT MAX(transactionDate) as date FROM [nooredenadb].[brokers].[trades_rayan]",
-                               db_conn)["date"].iloc[0]
 trades_all_raw = pd.DataFrame()
 portfolio_df = pd.DataFrame()
 for b in range(len(brokers_list)):
@@ -44,7 +42,7 @@ for b in range(len(brokers_list)):
             broker_class=BrokersRayanhamafza, url=brokers_list["address_offline"].iloc[b],
             username=brokers_list["username"].iloc[b], password=brokers_list["password"].iloc[b])
         safe_call_func(broker.get_assets)
-        safe_call_func(broker.get_trades, asset_type="stock", from_date=start_date_rayan, to_date=today)
+        safe_call_func(broker.get_trades, asset_type="stock", from_date=two_weeks_ago, to_date=today)
         safe_call_func(broker.get_purchase_upper_bound)
 
         purchase_upper_bound = broker.purchase_upper_bound["purchaseUpperBound"]
@@ -91,10 +89,12 @@ if len(trades_all_raw) > 0:
     trades_all_raw["bourseAccount"] = trades_all_raw["bourseAccount"].replace(
         {"رز": "رز ترنج"}, inplace=False, regex=False)
     try:
+        min_dates = trades_all_raw[["broker_id", "transactionDate"]].groupby("broker_id", as_index=False).min()
+        q_list = [(f"(broker_id = {min_dates.loc[i, "broker_id"]} AND "
+                   f"transactionDate >= '{min_dates.loc[i, "transactionDate"]}')") for i in range(len(min_dates))]
+        q_ = " OR ".join(q_list)
         crsr_rayan = db_conn.cursor()
-        crsr_rayan.execute(
-            f"DELETE FROM [nooredenadb].[brokers].[trades_rayan] WHERE transactionDate >= '{start_date_rayan}'"
-        )
+        crsr_rayan.execute(f"DELETE FROM [nooredenadb].[brokers].[trades_rayan] WHERE {q_}")
         crsr_rayan.close()
         last_row = pd.read_sql(
             f"SELECT MAX(row_) as row_ FROM [nooredenadb].[brokers].[trades_rayan]", db_conn)["row_"].iloc[0]
@@ -104,7 +104,7 @@ if len(trades_all_raw) > 0:
         logger.error(e)
 
 
-d_ = thirty_days_ago.strftime("%Y/%m/%d")
+d_ = (jdatetime.datetime.now() - jdatetime.timedelta(days=30)).strftime("%Y/%m/%d")
 query_ = (f"SELECT broker_id, portfolio_id, SUM(ABS(amount)) as amount FROM [nooredenadb].[brokers].[trades_rayan] "
           f"WHERE csTypeId in (1,2) and transactionDate>='{d_}' GROUP BY broker_id, portfolio_id")
 last_month_trades = pd.read_sql(query_, db_conn)
@@ -121,17 +121,6 @@ for l in range(len(last_month_trades)):
 
 ###########################################################################
 
-start_date_tadbir = pd.read_sql("SELECT MAX(TradeDate) as date FROM [nooredenadb].[brokers].[trades_tadbir]",
-                                db_conn)["date"].iloc[0]
-start_date_tadbir_ = start_date_tadbir[:10]
-
-query_start_tadbir = "SELECT MAX(TransactionDate) as date FROM [nooredenadb].[brokers].[trades_tadbir_ledger]"
-start_date_tadbir_ledger = pd.read_sql(query_start_tadbir, db_conn)["date"].iloc[0]
-start_date_tadbir_ledger_ = start_date_tadbir_ledger[:10]
-start_date_tadbir_ledger = jdatetime.datetime.fromgregorian(
-    year=int(start_date_tadbir_ledger[:4]), month=int(start_date_tadbir_ledger[5:7]),
-    day=int(start_date_tadbir_ledger[8:10])).strftime("%Y/%m/%d")
-
 trades_all_raw = pd.DataFrame()
 ledger_all_raw = pd.DataFrame()
 
@@ -145,8 +134,8 @@ for b in range(len(brokers_list)):
             broker = safe_login(
                 broker_class=BrokersTadbirpardaz, url=brokers_list["address_offline"].iloc[b],
                 username=brokers_list["username"].iloc[b], password=brokers_list["password"].iloc[b])
-            safe_call_func(broker.get_ledger, from_date=start_date_tadbir_ledger, to_date=today)
-            safe_call_func(broker.get_trades, from_date=start_date_tadbir_ledger, to_date=today)
+            safe_call_func(broker.get_ledger, from_date=two_weeks_ago, to_date=today)
+            safe_call_func(broker.get_trades,from_date=two_weeks_ago, to_date=today)
             safe_call_func(broker.get_account_info)
             safe_call_func(broker.get_assets)
 
@@ -195,9 +184,13 @@ for b in range(len(brokers_list)):
 
 if len(trades_all_raw) > 0:
     try:
+        min_dates = trades_all_raw[["broker_id", "TradeDate"]].groupby("broker_id", as_index=False).min()
+        min_dates["TradeDate"] = min_dates["TradeDate"].str[:10]
+        q_list = [(f"(broker_id = {min_dates.loc[i, "broker_id"]} AND "
+                   f"TradeDate >= '{min_dates.loc[i, "TradeDate"]}')") for i in range(len(min_dates))]
+        q_ = " OR ".join(q_list)
         crsr_rayan = db_conn.cursor()
-        crsr_rayan.execute(
-            f"DELETE FROM [nooredenadb].[brokers].[trades_tadbir] WHERE TradeDate >= '{start_date_tadbir_}'")
+        crsr_rayan.execute(f"DELETE FROM [nooredenadb].[brokers].[trades_tadbir] WHERE {q_}")
         crsr_rayan.close()
         insert_to_database(dataframe=trades_all_raw, database_table="[nooredenadb].[brokers].[trades_tadbir]")
     except Exception as e:
@@ -208,10 +201,13 @@ ledger_all_raw = ledger_all_raw[
     ledger_all_raw["Description"] != "مانده نقل از قبل"].reset_index(drop=True, inplace=False)
 if len(ledger_all_raw) > 0:
     try:
+        min_dates = ledger_all_raw[["broker_id", "TransactionDate"]].groupby("broker_id", as_index=False).min()
+        min_dates["TransactionDate"] = min_dates["TransactionDate"].str[:10]
+        q_list = [(f"(broker_id = {min_dates.loc[i, "broker_id"]} AND "
+                   f"TransactionDate >= '{min_dates.loc[i, "TransactionDate"]}')") for i in range(len(min_dates))]
+        q_ = " OR ".join(q_list)
         crsr_rayan = db_conn.cursor()
-        crsr_rayan.execute(
-            f"DELETE FROM [nooredenadb].[brokers].[trades_tadbir_ledger] "
-            f"WHERE TransactionDate >= '{start_date_tadbir_ledger_}'")
+        crsr_rayan.execute(f"DELETE FROM [nooredenadb].[brokers].[trades_tadbir_ledger] WHERE {q_}")
         crsr_rayan.close()
         last_row = pd.read_sql(f"SELECT MAX(row_) as row_ FROM [nooredenadb].[brokers].[trades_tadbir_ledger]",
                                db_conn)["row_"].iloc[0]
@@ -222,7 +218,7 @@ if len(ledger_all_raw) > 0:
 
 ###########################################################################
 
-d__ = thirty_days_ago.togregorian().strftime("%Y-%m-%d")
+d__ = (jdatetime.datetime.now() - jdatetime.timedelta(days=30)).togregorian().strftime("%Y-%m-%d")
 query_ = (f"SELECT broker_id, portfolio_id, SUM(ABS(NetPrice)) AS NetPrice FROM "
           f"[nooredenadb].[brokers].[trades_tadbir] WHERE TradeSideTitle IN ('خرید', 'فروش')"
           f" AND TradeDate>='{d__}' GROUP BY broker_id, portfolio_id")
