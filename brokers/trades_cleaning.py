@@ -157,9 +157,9 @@ symbols_sector = pd.read_sql(query_symbols_sector, db_conn)
 
 query_trades_last = ("SELECT date, portfolio_id, symbol, type, SUM(volume) AS volume, SUM(value) AS value, "
                      "SUM(total_cost) AS total_cost, SUM(total_cost_sep) AS total_cost_sep FROM "
-                     "[nooredenadb].[brokers].[trades_last] WHERE SUBSTRING(symbol, 1, 1) NOT IN ('ض', 'ط') "
-                     "GROUP BY date, portfolio_id, symbol, type")
+                     "[nooredenadb].[brokers].[trades_last] GROUP BY date, portfolio_id, symbol, type")
 trades_last = pd.read_sql(query_trades_last, db_conn)
+trades_last = trades_last[trades_last["symbol"].isin(symbols_sector["symbol"].values.tolist())].reset_index(drop=True)
 
 portfolio["sub_sector"].fillna("", inplace=True)
 sub_sectors = portfolio[["symbol", "sub_sector"]].drop_duplicates(
