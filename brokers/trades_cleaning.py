@@ -18,8 +18,12 @@ trades_tadbir = pd.read_sql(f"SELECT * FROM [nooredenadb].[brokers].[trades_tadb
                             f"WHERE TradeDate>='{start_date_tadbir}';", db_conn)
 if not trades_tadbir.empty:
     trades_tadbir["TradeSideTitle"].replace({"خرید": 1, "فروش": 2}, inplace=True)
-    trades_tadbir["SymbolBoard"] = trades_tadbir["Symbol"].str[-1]
-    trades_tadbir["Symbol"] = trades_tadbir["Symbol"].str[:-1]
+    trades_tadbir["SymbolBoard"] = [
+        trades_tadbir.loc[i, "Symbol"][-1] if trades_tadbir.loc[i, "Symbol"][-1].isdigit() else "1"
+        for i in range(len(trades_tadbir))]
+    trades_tadbir["Symbol"] = [
+        trades_tadbir.loc[i, "Symbol"][:-1] if trades_tadbir.loc[i, "Symbol"][-1].isdigit() else
+        trades_tadbir.loc[i, "Symbol"] for i in range(len(trades_tadbir))]
     trades_tadbir["TradeDate"] = [jdatetime.datetime.fromgregorian(
         year=int(trades_tadbir["TradeDate"].iloc[i][:4]), month=int(trades_tadbir["TradeDate"].iloc[i][5:7]),
         day=int(trades_tadbir["TradeDate"].iloc[i][8:10])).strftime("%Y/%m/%d") for i in range(len(trades_tadbir))]
