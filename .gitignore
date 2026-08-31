@@ -209,3 +209,6 @@ __marimo__/
 .idea
 *.xlsx
 .DS_Store
+
+# IDE folders
+.idea
