@@ -13,6 +13,7 @@ db_conn = make_connection()
 rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_conn)
 
 agent = Agent(username="09372377126", password="Dh74@123456")
+agent.login()
 
 dps_df = pd.DataFrame()
 dps_fund_df = pd.DataFrame()

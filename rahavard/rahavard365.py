@@ -8,9 +8,13 @@ warnings.filterwarnings("ignore")
 
 
 class Agent:
-    def __init__(self, username, password):
+    def __init__(self, username: str | None = None, password: str | None = None):
 
         self.base_url = "https://rahavard365.com/api/v2"
+        self.base_headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/126.0.0.0 Safari/537.36'}
+
 
         self.username = username
         self.password = password
@@ -20,10 +24,37 @@ class Agent:
         self.access_token = None
         self.account = None
 
-        if self.login_status != 200:
-            self.login()
-        else:
-            pass
+
+    def get_active_stocks(self):
+        stocks = rq.get(url=f"{self.base_url}/market-data/stocks?last_trade=any", headers=self.base_headers)
+        stocks_json = stocks.json()
+        stocks_data = stocks_json["data"]
+        return stocks_data
+
+
+    def get_closed_stocks(self):
+        closed_stocks = rq.get(url=f"{self.base_url}/market-data/closed-assets", headers=self.base_headers)
+        closed_stocks_json = closed_stocks.json()
+        closed_stocks_data = closed_stocks_json["data"]["closed_asset_list"]
+        return closed_stocks_data
+
+
+    def get_asset_data(self, asset_id: int):
+        response = rq.get(url=f"{self.base_url}/asset/{asset_id}", headers=self.base_headers)
+        if response.status_code == 200:
+            res_json = response.json()
+            data = res_json.get("data")
+            return data
+        return None
+
+
+    def get_funds_etf(self):
+        funds_etf = rq.get(f"{self.base_url}/market-data/etf-funds?fund_type=1&category_id=all&last_trade=any",
+                           headers=self.base_headers)
+        funds_etf_json = funds_etf.json()
+        funds_etf_data = funds_etf_json["data"]
+        return funds_etf_data
+
 
     def login(self):
         header = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -88,6 +119,7 @@ class Asset:
         self.get_production_sale_url = f"https://rahavard365.com/api/v2/asset/{self.idx_}/productionsale"
         self.production_sale = None
 
+
     def get_asset(self):
         response = rq.get(self.get_asset_url, headers=self.header)
         if response.status_code == 200:
@@ -98,6 +130,7 @@ class Asset:
                 print(e)
         else:
             pass
+
 
     def get_capital(self):
         response = rq.get(self.get_capital_url, headers=self.header)
@@ -110,6 +143,7 @@ class Asset:
                 print(e)
         else:
             pass
+
 
     def get_posts(self, last_id: int = None, exclude_replies: bool = True, has_chart_analysis: bool = True,
                   count: int = 10):
@@ -126,6 +160,7 @@ class Asset:
             self.posts = pd.concat([self.posts, posts], axis=0, ignore_index=True)
         else:
             pass
+
 
     def get_eps(self, capital_last: bool = False):
 
@@ -145,6 +180,7 @@ class Asset:
                 print(e)
         else:
             pass
+
 
     def get_dps(self):
         response = rq.get(self.get_dps_url, headers=self.header)
@@ -170,6 +206,7 @@ class Asset:
         else:
             pass
 
+
     def get_indicators(self):
         response = rq.get(url=self.get_indicators_url, headers=self.header)
         if response.status_code == 200:
@@ -181,6 +218,7 @@ class Asset:
         else:
             pass
 
+
     def get_feed(self, count: int = 20):
         response = rq.get(url=self.get_feed_url + f"?_count={count}", headers=self.header)
         if response.status_code == 200:
@@ -191,6 +229,7 @@ class Asset:
             except Exception as e:
                 print(e)
 
+
     def get_report(self, count: int = 20, skip: int = 0):
         response = rq.get(url=self.get_report_url + f"&_skip={skip}&_count={count}", headers=self.header)
         if response.status_code == 200:
@@ -200,6 +239,7 @@ class Asset:
                 pass
             except Exception as e:
                 print(e)
+
 
     def get_production_sale(self, count: int = 10, skip: int = 0):
         response = rq.get(url=self.get_production_sale_url + f"?_skip={skip}&_count={count}", headers=self.header)
@@ -216,6 +256,7 @@ class Asset:
             except Exception as e:
                 print(e)
 
+
 if __name__ == '__main__':
     agent = Agent(username="09372377126", password="Dh74@123456")
     asset453 = Asset(asset_id="453", agent=agent)
@@ -228,4 +269,3 @@ if __name__ == '__main__':
     asset453.get_feed()
     asset453.get_production_sale()
     asset453.get_report()
-
