@@ -237,8 +237,8 @@ fig.add_trace(fig_indicator, row=2, col=2)
 
 fig.update_xaxes(tickfont=dict(family="B Nazanin", size=18), calendar="jalali", tickformat="%Y/%m/%d", showgrid=False, tickangle=45)
 
-range1 = [-20, 60]
-range2 = [-650, 2000]
+range1 = [-20, 65]
+range2 = [-1000, 3200]
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", ticksuffix="% ", showgrid=False, zeroline=True, zerolinewidth=4, secondary_y=False,
                  range=range1)

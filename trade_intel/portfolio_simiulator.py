@@ -8,14 +8,14 @@ from trade_intel.utils.funcs import get_last_date, get_next_date, capital_increa
 
 
 start_day = "1404/10/30"
-end_day = "1405/05/25"
+end_day = "1405/06/01"
 warnings.filterwarnings("ignore")
 one_day = jdatetime.timedelta(days=1)
 db_conn = make_connection()
 # fixed_income_id = "3846143218462419"
 # fixed_income_name = "افران"
 credit_APR = 0.28
-credit = 3_316_277_911_780  # 1403/10/30
+credit = 1_428_756_000_000  # 1404/10/30
 closed_days = pd.read_sql("SELECT REPLACE([date], '-', '/') as date FROM [nooredenadb].[extra].[closed_days]",
                           db_conn)
 
