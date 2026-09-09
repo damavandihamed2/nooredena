@@ -16,8 +16,8 @@ def get_strategy_return(
         asset_id_trade: str,
         asset_type: str,
         buy_fix_income: bool,
-        max_share_of_market_trade: float,
-) -> dict[str, float]:
+        max_share_of_market_trade: float | int,
+) -> dict[str, float | int | pd.DataFrame]:
 
     # initial_balance = 1_000_000_000
     # from_date = 1403_01_01
