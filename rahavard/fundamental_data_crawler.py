@@ -55,7 +55,7 @@ insert_to_database(dataframe=dps_fund_df, database_table="[nooredenadb].[rahavar
 
 ########################################################################################################################
 
-dps_df = dps_df[~((dps_df["asset_id"] == "604") & (dps_df["date_time"] == "2025-03-03T00:00:00+03:30"))]
+dps_df = dps_df[~((dps_df["asset_id"] == "604") & (dps_df["announcement_date"] == "2025-02-13T00:00:00+03:30"))]
 crsr = db_conn.cursor()
 crsr.execute("Truncate TABLE [nooredenadb].[rahavard].[dps]")
 crsr.close()
