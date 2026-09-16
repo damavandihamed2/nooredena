@@ -17,7 +17,7 @@ class BrokersRayanhamafza:
         self.pass_ = password
 
         self.login_page_url = url + "Account/Login"
-        self.captcha_url = url + "/api/brokerage/Captcha"
+        self.captcha_url = url + "api/brokerage/Captcha"
         self.captcha_headers = None
         self.account_url = url + "api/customer/Account"
         self.remaining_asset_url = url + "api/Customer/RemainingAsset"
@@ -179,4 +179,3 @@ class BrokersRayanhamafza:
                 return "Getting purchaseUpperBound failed."
         else:
             return purchase_upper_bound_response.status_code
-
