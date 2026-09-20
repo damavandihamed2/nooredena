@@ -50,15 +50,15 @@ cpi_df = pd.read_sql(cpi_data_query, db_conn)
 
 # querying Indices from database
 indices_list = [32, 64, 72, 73]
-indices_query = f"SELECT * FROM nooredenadb.tsetmc.indices WHERE indices IN {tuple(indices_list)}"
+indices_query = f"SELECT * FROM [nooredenadb].[tsetmc].[indices] WHERE index_code IN {tuple(indices_list)}"
 indices = pd.read_sql(indices_query, db_conn)
 
 indices_df = pd.DataFrame(columns=["dEven"])
 index_history_query = ("SELECT date dEven, close_price FROM [nooredenadb].[tsetmc].[indices_history] "
-                       "WHERE indices_id = '{indices_id}'")
+                       "WHERE index_id = '{index_id}'")
 for row in indices.iterrows():
-    name, id_ = row[1]["indices_name"], row[1]["indices_id"]
-    index_history = pd.read_sql(index_history_query.format(indices_id=id_), db_conn)
+    name, id_ = row[1]["index_name"], row[1]["index_id"]
+    index_history = pd.read_sql(index_history_query.format(index_id=id_), db_conn)
     index_history.rename({"close_price": name.replace("\\u200c", " ")}, axis=1, inplace=True)
     indices_df = indices_df.merge(index_history, on="dEven", how="outer")
 
