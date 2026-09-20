@@ -94,7 +94,7 @@ for i in tqdm(range(len(month_last) - 1)):
     return_df = pd.concat([return_df, return_temp], axis=0, ignore_index=True)
 
 
-total_index = pd.read_sql("SELECT temp2.Jalali_1 date, temp1.close_price FROM nooredenadb.tsetmc.indices_history temp1 LEFT JOIN (SELECT try_convert(int, replace(Miladi, '-', '')) miladi, Jalali_1 FROM nooredenadb.extra.dim_date) temp2 ON temp1.date=temp2.miladi WHERE indices_id = '32097828799138957' ORDER BY temp2.Jalali_1", db_conn)
+total_index = pd.read_sql("SELECT temp2.Jalali_1 date, temp1.close_price FROM [nooredenadb].[tsetmc].[indices_history] temp1 LEFT JOIN (SELECT try_convert(int, replace(Miladi, '-', '')) miladi, Jalali_1 FROM nooredenadb.extra.dim_date) temp2 ON temp1.date=temp2.miladi WHERE indices_id = '32097828799138957' ORDER BY temp2.Jalali_1", db_conn)
 total_index["year-month"] = total_index["date"].str[:7]
 total_index = total_index[["year-month", "date"]].groupby(by=["year-month"], as_index=False).max()[["date"]].merge(total_index, on="date", how="left")
 
@@ -102,7 +102,7 @@ return_df = return_df.merge(total_index[["date", "close_price"]].rename({"date":
 return_df = return_df.merge(total_index[["date", "close_price"]].rename({"date": "to", "close_price": "total_index_next"}, axis=1, inplace=False), on="to", how="left")
 return_df["total_index_return"] = (return_df["total_index_next"] / return_df["total_index"]) - 1
 
-top30_index = pd.read_sql("SELECT temp2.Jalali_1 date, temp1.close_price FROM nooredenadb.tsetmc.indices_history temp1 LEFT JOIN (SELECT try_convert(int, replace(Miladi, '-', '')) miladi, Jalali_1 FROM nooredenadb.extra.dim_date) temp2 ON temp1.date=temp2.miladi WHERE indices_id = '10523825119011581' ORDER BY temp2.Jalali_1", db_conn)
+top30_index = pd.read_sql("SELECT temp2.Jalali_1 date, temp1.close_price FROM [nooredenadb].[tsetmc].[indices_history] temp1 LEFT JOIN (SELECT try_convert(int, replace(Miladi, '-', '')) miladi, Jalali_1 FROM nooredenadb.extra.dim_date) temp2 ON temp1.date=temp2.miladi WHERE indices_id = '10523825119011581' ORDER BY temp2.Jalali_1", db_conn)
 top30_index["year-month"] = top30_index["date"].str[:7]
 top30_index = top30_index[["year-month", "date"]].groupby(by=["year-month"], as_index=False).max()[["date"]].merge(top30_index, on="date", how="left")
 
