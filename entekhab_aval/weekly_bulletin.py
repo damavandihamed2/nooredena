@@ -358,21 +358,21 @@ funds_gold.dropna(subset=["symbol"], inplace=True, ignore_index=True)
 
 indices = pd.read_sql("SELECT * FROM [nooredenadb].[tsetmc].[indices]", db_conn)
 
-indices_start = pd.read_sql(f"SELECT indices_id, close_price as [{start_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
+indices_start = pd.read_sql(f"SELECT index_id, close_price as [{start_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
                             f"[tsetmc].[indices_history] WHERE date={start_date.togregorian().strftime('%Y%m%d')}",
                             db_conn)
 
 if end_date == today:
-    indices_end = pd.read_sql(f"SELECT indices_id, close_price as [{end_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
+    indices_end = pd.read_sql(f"SELECT index_id, close_price as [{end_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
                               f"[tsetmc].[indices_data_today]", db_conn)
 else:
-    indices_end = pd.read_sql(f"SELECT indices_id, close_price as [{end_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
+    indices_end = pd.read_sql(f"SELECT index_id, close_price as [{end_date.strftime('%Y/%m/%d')}] FROM [nooredenadb]."
                               f"[tsetmc].[indices_history] WHERE date={end_date.togregorian().strftime('%Y%m%d')}",
                               db_conn)
 
-indices_return = indices_start.merge(indices_end, on="indices_id", how="left").merge(
-    indices[["indices_id", "indices_name"]], on="indices_id", how="left")[[
-    "indices_name", f"{start_date.strftime('%Y/%m/%d')}", f"{end_date.strftime('%Y/%m/%d')}"]]
+indices_return = indices_start.merge(indices_end, on="index_id", how="left").merge(
+    indices[["index_id", "index_name"]], on="index_id", how="left")[[
+    "index_name", f"{start_date.strftime('%Y/%m/%d')}", f"{end_date.strftime('%Y/%m/%d')}"]]
 indices_return["return"] = (indices_return[f"{end_date.strftime('%Y/%m/%d')}"] /
                             indices_return[f"{start_date.strftime('%Y/%m/%d')}"]) - 1
 
@@ -413,11 +413,11 @@ query_market_top10_return_30d = ("SELECT TOP(10) date, symbol, price_last, total
 market_top10_return_30d = pd.read_sql(query_market_top10_return_30d, db_conn)
 market_top10_return_30d.sort_values(by="return", inplace=True, ignore_index=True, ascending=False)
 
-query_indices_return_30d = ("SELECT TEMP1.*, indices.indices_name FROM (SELECT [date], [indices_id], "
+query_indices_return_30d = ("SELECT TEMP1.*, indices.index_name FROM (SELECT [date], [index_id], "
                             "[close_price], [price_one_month], ((try_convert(float, [close_price]) / "
                             "try_convert(float, [price_one_month])) - 1)  AS [return] FROM [nooredenadb].[tsetmc]"
                             ".[indices_return]) TEMP1 LEFT JOIN [nooredenadb].[tsetmc].[indices] "
-                            "ON indices.indices_id=TEMP1.indices_id")
+                            "ON indices.index_id=TEMP1.index_id")
 indices_return_30d = pd.read_sql(query_indices_return_30d, db_conn)
 indices_return_30d.sort_values(by="return", inplace=True, ignore_index=True, ascending=False)
 
