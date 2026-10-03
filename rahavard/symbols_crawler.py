@@ -29,7 +29,7 @@ closed_stocks_df = closed_stocks_df[column_list]
 ##################################################
 
 stocks_df = pd.concat([stocks_df, closed_stocks_df], axis=0, ignore_index=True)
-stocks_df[["type", "fiscal_year"]] = "stock", None
+stocks_df[["type", "fiscal_month"]] = "stock", None
 for s in tqdm(range(len(stocks_df))):
     asset_id = stocks_df["asset_id"].iloc[s]
     data = agent.get_asset_data(asset_id=asset_id)
