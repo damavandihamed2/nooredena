@@ -1,5 +1,10 @@
+import os
+import sys
+import warnings
+import jdatetime
+import subprocess
 import pandas as pd
-import os, sys, warnings, jdatetime
+from pathlib import Path
 
 from utils.custom_logger import get_logger
 from utils.database import make_connection, insert_to_database
@@ -71,10 +76,7 @@ if not statements_df.empty:
     crsr.execute(f"DELETE FROM [nooredenadb].[brokers].[ime_statements_coinonline] WHERE date >= '{last_date_statements}'")
     insert_to_database(statements_df, "[nooredenadb].[brokers].[ime_statements_coinonline]")
 
-# SELECT
-#     portfolio_id, date, symbol, trade_type, sum(volume) volume, sum(volume * price) value
-# FROM [nooredenadb].[brokers].[ime_trades_coinonline]
-# GROUP BY
-#     portfolio_id, date, symbol, trade_type
-# ORDER BY
-#     date
+##################################################
+
+project_path = str(Path(__name__).resolve().parent)
+subprocess.run([sys.executable, "-m", "brokers.ime_cleaning"], cwd=project_path)
