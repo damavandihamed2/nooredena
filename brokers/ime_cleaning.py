@@ -9,10 +9,10 @@ from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
+today = jdatetime.datetime.today()
 db_conn = make_connection()
 
 
-today = jdatetime.datetime.today()
 trades = pd.read_sql("SELECT * FROM [nooredenadb].[brokers].[ime_trades_coinonline] WHERE status='انجام شده'", db_conn)
 trades = trades[["date", "symbol", "trade_type", "price", "volume", "portfolio_id", "broker_id"]]
 trades["trade_type"].replace({"خرید": 1, "فروش": 2}, inplace=True)
@@ -58,9 +58,6 @@ if not df.empty:
 
 ##################################################
 
-CDCs = pd.read_sql("SELECT ContractCode FROM [nooredenadb].[ime].[live_tablo_cdc]", db_conn)
-CDCs = CDCs["ContractCode"].values.tolist()
-
 portfolio_ime = pd.read_sql(f"SELECT * FROM [nooredenadb].[portfolio].[portfolio_ime]", db_conn)
 last_date = portfolio_ime["date"].iloc[0]
 
@@ -72,7 +69,7 @@ trades = pd.read_sql(
 
 if not trades.empty:
 
-    trades["value"] = trades["value"] + trades["commission"]
+    trades["value"] = trades["value"] + (trades["commission"] * ((trades["type"] * -2) + 3))
     trades.drop(columns=["commission", "broker_id"], inplace=True)
     trades = trades.groupby(by=["date", "portfolio_id", "symbol", "type"], as_index=False).sum()
     trades["price"] = trades["value"] / trades["volume"]
