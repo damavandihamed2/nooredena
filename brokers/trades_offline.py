@@ -1,18 +1,23 @@
+import os
+import sys
+import warnings
+import jdatetime
+import subprocess
+import numpy as np
 import pandas as pd
-from time import sleep
 from pathlib import Path
-import os, sys, random, warnings, jdatetime, subprocess, numpy
 
+from utils.custom_logger import get_logger
+from utils.database import make_connection, insert_to_database
 from brokers.utils.funcs import safe_login, safe_call_func
 from brokers.tadbirpardaz.tadbirpardaz import BrokersTadbirpardaz
 from brokers.rayanhamafza.rayanhamafza import BrokersRayanhamafza
 
-from utils.custom_logger import get_logger
-from utils.database import make_connection, insert_to_database
 
 
 warnings.filterwarnings("ignore")
 db_conn = make_connection()
+
 
 try:
     filename = os.path.basename(__file__)
@@ -171,8 +176,8 @@ for b in range(len(brokers_list)):
             if len(ledger) > 0:
                 ledger.drop(columns=["TradeBranchDescription", "RowType", "DebitorBalance", "CreditorBalance", "Symbol",
                                      "AccountCode", "SubsidiaryLedgerTitle", "VoucherTypeCode"], inplace=True)
-                ledger.replace({"MarketInstrumentTitle": {"": numpy.nan}, "MarketInstrumentISIN": {"": numpy.nan},
-                                "BrokerStationCode": {"": numpy.nan}, "TradeNumber": {"": numpy.nan}},
+                ledger.replace({"MarketInstrumentTitle": {"": np.nan}, "MarketInstrumentISIN": {"": np.nan},
+                                "BrokerStationCode": {"": np.nan}, "TradeNumber": {"": np.nan}},
                                inplace=True, regex=False)
                 ledger["broker_id"] = brokerId
                 ledger["portfolio_id"] = portfolioId
@@ -180,7 +185,7 @@ for b in range(len(brokers_list)):
 
         except Exception as e:
             logger.error(e)
-        sleep(random.randint(10, 51)/10)
+
 
 if len(trades_all_raw) > 0:
     try:
