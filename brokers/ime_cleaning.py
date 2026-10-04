@@ -7,6 +7,7 @@ import pandas as pd
 from utils.database import make_connection, insert_to_database
 
 
+
 warnings.filterwarnings("ignore")
 db_conn = make_connection()
 
