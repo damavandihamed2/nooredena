@@ -112,6 +112,12 @@ class CoinOnline:
                 data={'txtUserName': self._username,
                       'txtPassword': encrypt_password(password=self._password, hash_code=self.hash_code)["pwd_enc"],
                       'hdnStrChallenge': self.hdnStrChallenge, 'txtCaptcha': self.captcha_value})
+
+            if "نام کاربری یا کلمه عبور اشتباه است." in self.response_login.text:
+                raise PermissionError("Username or Password is Wrong")
+            if "کد امنیتی وارد شده اشتباه می باشد" in self.response_login.text:
+                raise ValueError("Wrong Captcha")
+
             self.auth_cookies.update({"TS01fd594c": self.response_login.history[0].cookies.get("TS01fd594c"),
                                       ".SKH": self.response_login.history[0].cookies.get(".SKH"),
                                       "Token": self.response_login.history[0].cookies.get("Token")})
