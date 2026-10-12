@@ -165,7 +165,7 @@ class CoinOnline:
 
 
     def _get_statements_each_page(self, start_date: str, end_date: str, page: int, page_size: int) -> rq.Response:
-        data = {'txtStartDate': start_date, 'txtEndDate': end_date,
+        data = {'txtStartDate': start_date, 'txtEndDate': end_date, "drpMarketType": "-1",
                 'OnlineImeTradesPagerHidden': f"{page}", 'OnlineImeTradespageIndex': f'{page_size}'}
         self.get_trades_each_page_response = self._fetch_data(
             url=f'https://{self.website_address}/Customer/OnlineIMEStatements', data=data)
