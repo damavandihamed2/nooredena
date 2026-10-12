@@ -45,7 +45,7 @@ statements_df = statements_df.drop("document_id", axis=1, inplace=False).groupby
 
 ##################################################
 
-df = trades_df.merge(statements_df, on=['date', 'symbol', 'trade_type', 'portfolio_id', 'broker_id'], how="outer")
+df = trades_df.merge(statements_df, on=['date', 'symbol', 'trade_type', 'portfolio_id', 'broker_id'], how="right")
 df.rename({"trade_type": "type"}, axis=1, inplace=True)
 df.drop("price", axis=1, inplace=True)
 
