@@ -24,7 +24,7 @@ cols_mapper_profitloss = {
     'TotalCost': "total_cost", 'ExerciseAmount': "option_exercise_cost", 'PureProfitLossPercent': "net_profit_percent",
     'PureProfitLoss': "net_profit", 'ProfitLoss': "gross_profit", 'ProfitLossPercent': "gross_profit_percent"}
 cols_mapper_portfolio = {
-    "date": "date", 'pure_gain_percentage_with_close_price': 'net_profit_final_price_percent',
+    "date": "date", 'pure_gain_percentage_with_close_price': 'net_profit_final_price_percent', "total_cost": "total_cost",
     'break_even_price': 'break_even_point', 'supervising_broker_display': 'supervising_broker', 'asset_display': 'asset',
     'value_with_close_price': 'gross_value_final_price', 'total_count': 'amount', 'total_contract_count': 'put_option',
     'value_with_close_price_to_sum': 'gross_value_final_price_ratio', 'sell_commission_with_close_price': 'commission',
