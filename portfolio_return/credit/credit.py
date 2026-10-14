@@ -1,7 +1,7 @@
 import warnings
-import jdatetime
 import pandas as pd
 from pyodbc import Connection
+
 from utils.database import make_connection
 
 
@@ -14,12 +14,7 @@ def get_dim_date(db_connection: Connection) -> pd.DataFrame:
     return dim_date
 
 
-def get_remaining_rayan(
-        # start_date: str,
-        # end_date: str,
-        db_connection: Connection
-) -> pd.DataFrame:
-
+def get_remaining_rayan(db_connection: Connection) -> pd.DataFrame:
     query1 = ("SELECT trades_rayan.row_, trades_rayan.transactionDate as date, trades_rayan.remaining, "
               "trades_rayan.broker_id, trades_rayan.portfolio_id FROM [nooredenadb].[brokers].[trades_rayan]"
               " INNER JOIN (SELECT max(row_) as row__, transactionDate as date, broker_id, portfolio_id FROM "
@@ -28,15 +23,10 @@ def get_remaining_rayan(
     credits1 = pd.read_sql(query1, db_connection)
     credits1.drop(columns=["row_"], inplace=True)
     credits1.sort_values(by=["broker_id", "portfolio_id", "date"], inplace=True)
-    # credits1 = credits1[(credits1["date"] >= start_date) & (credits1["date"] <= end_date)].reset_index(drop=True)
     return credits1
 
 
-def get_remaining_tadbir(
-        # start_date: str,
-        # end_date: str,
-        db_connection: Connection
-) -> pd.DataFrame:
+def get_remaining_tadbir(db_connection: Connection) -> pd.DataFrame:
     query2 = ("SELECT temp.row_, temp.broker_id, temp.portfolio_id, temp.date_, trades_tadbir_ledger.Remain remaining"
               " FROM (SELECT max(row_) row_, broker_id, portfolio_id, substring(TransactionDate, 1, 10) date_ FROM "
               "[nooredenadb].[brokers].[trades_tadbir_ledger] WHERE Description "
@@ -47,58 +37,37 @@ def get_remaining_tadbir(
     dim_date = get_dim_date(db_connection=db_connection)
     credits2 = credits2.merge(dim_date, on="date_", how="left")
     credits2 = credits2.drop(columns=["date_", "row_"], inplace=False)
-    # credits2 = credits2[(credits2["date"] >= start_date) & (credits2["date"] <= end_date)].reset_index(drop=True)
     return credits2
 
 
-
-
-
-
-
 def get_credits_history(start_date: str, end_date: str, db_connection: Connection) -> pd.DataFrame:
-
     dim_date = get_dim_date(db_connection=db_connection)
-    # start_date_remianing = (jdatetime.datetime.strptime(start_date, "%Y/%m/%d") - jdatetime.timedelta(days=90)).strftime("%Y/%m/%d")
-    remaining_rayan = get_remaining_rayan(
-        # start_date=start_date_remianing, end_date=end_date,
-        db_connection=db_connection
-    )
-    remaining_tadbir = get_remaining_tadbir(
-        # start_date=start_date_remianing, end_date=end_date,
-        db_connection=db_connection
-    )
+    remaining_rayan = get_remaining_rayan(db_connection=db_connection)
+    remaining_tadbir = get_remaining_tadbir(db_connection=db_connection)
     credits = pd.concat([remaining_rayan, remaining_tadbir], axis=0, ignore_index=True)
 
+    full_date_broker = pd.MultiIndex.from_product([
+        dim_date["date"].drop_duplicates(inplace=False).sort_values(inplace=False),
+        credits["broker_id"].drop_duplicates(inplace=False),
+        credits["portfolio_id"].drop_duplicates(inplace=False)],
+        names=['date', 'broker_id', "portfolio_id"])
 
-    full_date_broker = pd.MultiIndex.from_product(
-        [
-            dim_date["date"].drop_duplicates(inplace=False).sort_values(inplace=False),
-            credits["broker_id"].drop_duplicates(inplace=False),
-            credits["portfolio_id"].drop_duplicates(inplace=False)
-        ],
-        names=['date', 'broker_id', "portfolio_id"]
+    df_result = credits.set_index(
+        keys=['date', 'broker_id', "portfolio_id"], inplace=False, drop=True
+    ).reindex(
+        full_date_broker
+    ).reset_index(
+        drop=False, inplace=False
+    ).sort_values(
+        by=['broker_id', "portfolio_id", 'date'], ignore_index=True, inplace=False
     )
 
-    df_result = (
-        credits.drop_duplicates(
-            subset=['date', 'broker_id', "portfolio_id"], keep='last'
-        ).set_index(
-            ['date', 'broker_id', "portfolio_id"]
-        ).reindex(
-            full_date_broker
-        ).reset_index(
-        ).sort_values(by=['broker_id', "portfolio_id", 'date'])
-    )
-
-    df_result['remaining'] = df_result.groupby(["portfolio_id", 'broker_id'])['remaining'].ffill().fillna(0)
-    df_result['remaining'] = df_result.groupby(["portfolio_id", 'broker_id'])['remaining'].fillna(0)
+    df_result['remaining'] = df_result.groupby(by=["portfolio_id", 'broker_id'])['remaining'].ffill().fillna(0)
     df_result["remaining"] = ((df_result["remaining"] < 0) * 1) * df_result["remaining"]
 
     df_result = df_result.groupby(by='date', as_index=False)['remaining'].sum()
-    df_result = df_result[
-        (df_result["date"] >= start_date) & (df_result["date"] <= end_date)
-    ].sort_values(by="date", inplace=False, ignore_index=True)
+    df_result = df_result[(df_result["date"] >= start_date) & (df_result["date"] <= end_date)]
+    df_result = df_result.sort_values(by="date", inplace=False, ignore_index=True)
 
     return df_result
 
@@ -106,12 +75,8 @@ def get_credits_history(start_date: str, end_date: str, db_connection: Connectio
 
 
 
-
 warnings.filterwarnings("ignore")
 db_conn = make_connection()
-
 start_date = "1404/10/30"
 end_date = "1405/06/31"
-
-
 credits_history_df = get_credits_history(start_date=start_date, end_date=end_date, db_connection=db_conn)
