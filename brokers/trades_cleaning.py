@@ -9,7 +9,15 @@ warnings.filterwarnings("ignore")
 db_conn = make_connection()
 today = jdatetime.datetime.today().strftime('%Y/%m/%d')
 
-start_date = pd.read_sql("SELECT MAX(date) date FROM [nooredenadb].[brokers].[trades]", db_conn)["date"].iloc[0]
+start_date = pd.read_sql(
+    "SELECT MAX(date) date FROM [nooredenadb].[brokers].[trades]",
+    db_conn
+)["date"].iloc[0]
+
+symbols_strat_with_z = pd.read_sql(
+    "SELECT distinct(symbol) FROM [nooredenadb].[tsetmc].[symbols] WHERE symbol LIKE 'ذ%'",
+    db_conn
+)["symbol"].tolist()
 
 ####################################################################################
 
@@ -54,8 +62,9 @@ if not trades_rayan.empty:
     trades_rayan.drop(columns=["row_", "branch", "fcKey", "branchId", "csTypeName", "rowOrder", "debtor", "creditor",
                                "remaining"], inplace=True, errors="ignore")
     trades_rayan = trades_rayan[~trades_rayan["comments"].str.split(expand=True)[0].isin(["تفاوت", "پذيره"])]
-    trades_rayan['bourseAccount'] = trades_rayan.apply(
-        lambda row: row['bourseAccount'][(row["bourseAccount"][0] == "ذ" * 1):], axis=1)
+    mask = (trades_rayan['bourseAccount'].str.startswith('ذ', na=False) &
+            ~trades_rayan['bourseAccount'].isin(symbols_strat_with_z))
+    trades_rayan.loc[mask, 'bourseAccount'] = trades_rayan.loc[mask, 'bourseAccount'].str[1:]
     trades_rayan["order_id"] = trades_rayan["comments"].str.extract(r'(\([0-9a-zA-Z]*\))')[0].str[1:-1]
     trades_rayan = trades_rayan[trades_rayan["csTypeId"].isin([1, 2])]
     trades_rayan["amount"] = trades_rayan["amount"].abs()
