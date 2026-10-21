@@ -1,8 +1,5 @@
-import warnings
 import pandas as pd
 from pyodbc import Connection
-
-from utils.database import make_connection
 
 
 
@@ -20,10 +17,10 @@ def get_remaining_rayan(db_connection: Connection) -> pd.DataFrame:
               " INNER JOIN (SELECT max(row_) as row__, transactionDate as date, broker_id, portfolio_id FROM "
               "[nooredenadb].[brokers].[trades_rayan] group by transactionDate, broker_id, portfolio_id)"
               " as temp ON row__=row_ ORDER BY date, broker_id, portfolio_id")
-    credits1 = pd.read_sql(query1, db_connection)
-    credits1.drop(columns=["row_"], inplace=True)
-    credits1.sort_values(by=["broker_id", "portfolio_id", "date"], inplace=True)
-    return credits1
+    credits_rayan = pd.read_sql(query1, db_connection)
+    credits_rayan.drop(columns=["row_"], inplace=True)
+    credits_rayan.sort_values(by=["broker_id", "portfolio_id", "date"], inplace=True)
+    return credits_rayan
 
 
 def get_remaining_tadbir(db_connection: Connection) -> pd.DataFrame:
@@ -33,11 +30,11 @@ def get_remaining_tadbir(db_connection: Connection) -> pd.DataFrame:
               "NOT IN ('سند اختتامیه', 'سند افتتاحیه مورخ {0}') group by substring(TransactionDate, 1, 10), "
               "broker_id, portfolio_id) temp INNER JOIN [nooredenadb].[brokers].[trades_tadbir_ledger] "
               "ON temp.row_ = trades_tadbir_ledger.row_")
-    credits2 = pd.read_sql(query2, db_connection)
+    credits_tadbir = pd.read_sql(query2, db_connection)
     dim_date = get_dim_date(db_connection=db_connection)
-    credits2 = credits2.merge(dim_date, on="date_", how="left")
-    credits2 = credits2.drop(columns=["date_", "row_"], inplace=False)
-    return credits2
+    credits_tadbir = credits_tadbir.merge(dim_date, on="date_", how="left")
+    credits_tadbir = credits_tadbir.drop(columns=["date_", "row_"], inplace=False)
+    return credits_tadbir
 
 
 def get_credits_history(start_date: str, end_date: str, db_connection: Connection) -> pd.DataFrame:
@@ -68,12 +65,14 @@ def get_credits_history(start_date: str, end_date: str, db_connection: Connectio
     df_result = df_result.groupby(by='date', as_index=False)['remaining'].sum()
     df_result = df_result[(df_result["date"] >= start_date) & (df_result["date"] <= end_date)]
     df_result = df_result.sort_values(by="date", inplace=False, ignore_index=True)
+    df_result.rename(columns={"remaining": "credit"}, inplace=True)
 
     return df_result
 
 
 
-
+import warnings
+from utils.database import make_connection
 
 warnings.filterwarnings("ignore")
 db_conn = make_connection()

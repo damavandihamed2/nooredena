@@ -4,68 +4,41 @@ import numpy as np
 import pandas as pd
 
 from utils.database import make_connection
-from trade_intel.utils.funcs import get_last_date, get_next_date, capital_increase, CapChangeParams
+from trade_intel.utils.funcs import capital_increase, CapChangeParams
+from trade_intel.utils.data import get_last_date, get_fundamental_data, get_cashflow, get_embedded_put_options
+from trade_intel.utils.credit.credit_history import get_credits_history
 
 
 start_day = "1404/10/30"
 end_day = "1405/07/01"
+
 warnings.filterwarnings("ignore")
 one_day = jdatetime.timedelta(days=1)
+
 db_conn = make_connection()
+if not db_conn:
+    raise ConnectionError("Database connection failed")
+
 # fixed_income_id = "3846143218462419"
 # fixed_income_name = "افران"
+
 credit_APR = 0.28
-credit = 1_428_756_000_000  # 1404/10/30
+credit = get_credits_history(start_date=start_day, end_date=end_day, db_connection=db_conn)
 closed_days = pd.read_sql("SELECT REPLACE([date], '-', '/') as date FROM [nooredenadb].[extra].[closed_days]",
                           db_conn)
 
 ################################################################################################
 
-dps_funds = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps_funds]", db_conn)
-dps_funds["date"] = dps_funds.apply(lambda row: jdatetime.datetime.fromgregorian(
-    year=int(row["date"][:4]), month=int(row["date"][5:7]), day=int(row["date"][8:10])
-).strftime("%Y/%m/%d") if row["date"] is not None else None, axis=1)
+cashflow = get_cashflow(db_connection=db_conn, start_date=start_day, include_avalhami_redemption=False)
 
-dps = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps]", db_conn)
-for c in ['fiscal_year', 'date_time', 'announcement_date']:
-    dps[c] = dps.apply(lambda row: jdatetime.datetime.fromgregorian(
-        year=int(row[c][:4]), month=int(row[c][5:7]), day=int(row[c][8:10])
-    ).strftime("%Y/%m/%d") if row[c] is not None else None, axis=1)
+embedded_put_options = get_embedded_put_options(db_connection=db_conn)
 
-capital_changes = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[capital_changes]", db_conn)
-for c in ['date', 'underwriting_end_date', 'registration_date', 'stock_certificate_receive_date', 'warrant_sell_date']:
-    capital_changes[c] = capital_changes.apply(lambda row: jdatetime.datetime.fromgregorian(
-        year=int(row[c][:4]), month=int(row[c][5:7]), day=int(row[c][8:10])
-    ).strftime("%Y/%m/%d") if row[c] is not None else None, axis=1)
+fundamental_data = get_fundamental_data(db_connection=db_conn)
+dps_funds = fundamental_data["dps_funds"]
+dps = fundamental_data["dps"]
+capital_changes = fundamental_data["capital_changes"]
 
 ################################################################################################
-
-query_cashflow = (f"SELECT * FROM [nooredenadb].[company].[cashflow] where date > '{start_day}' "
-                  f"and (meeting_date <= '{start_day}' or debtor > 0) order by date")
-cashflow = pd.read_sql(query_cashflow, db_conn)
-
-# query_avalhami_raw = ("SELECT [jalaliDate] date, [sellNAVPerShare] final_price, ISNULL(TEMP.funds_unit, 0) amount, "
-#                       "ISNULL(TEMP.cost, 0) total_cost FROM [nooredenadb].[extra].[avalhami_nav] LEFT JOIN (SELECT date,"
-#                       " SUM((CASE WHEN type=1 THEN funds_unit ELSE funds_unit * -1 END)) funds_unit, SUM((CASE WHEN "
-#                       "type=1 THEN value ELSE cost * -1 END)) AS cost FROM [nooredenadb].[extra].[avalhami_trades] "
-#                       "GROUP BY date) AS TEMP ON avalhami_nav.jalaliDate=TEMP.date")
-# avalhami_df = pd.read_sql(query_avalhami_raw, db_conn)
-# avalhami_df = avalhami_df[(avalhami_df["date"] > start_day) & (avalhami_df["amount"] < 0)]
-# avalhami_df["creditor"] = avalhami_df["amount"] * avalhami_df["final_price"] * -1
-# avalhami_df = avalhami_df[["date", "creditor"]]
-# avalhami_df["debtor"] = 0
-# avalhami_df["source"] = "حامی اول"
-# avalhami_df["description"] = "واریز به حساب بابت ابطال واحدهای صندوق بازارگردانی حامی اول (حامی اول)"
-#
-# cashflow = pd.concat([cashflow, avalhami_df], axis=0, ignore_index=True)
-
-cashflow["due_date"] = [get_last_date(date_=cashflow["date"].iloc[i]) if ~cashflow["date"].isna().iloc[i] else np.nan
-                        for i in range(len(cashflow))]
-cashflow["paid"] = False
-
-put_options = pd.read_sql("SELECT * FROM [nooredenadb].[sigma].[put_option]", db_conn)
-put_options["payday"] = [get_next_date(date_=put_options["maturity_date"].iloc[i]) for i in range(len(put_options))]
-put_options["done"] = False
 
 rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_conn)
 portfolio = pd.read_sql("SELECT [symbol], [type], [status], [amount], [total_cost], [final_price], [date] "
@@ -108,9 +81,10 @@ for i in range(len(portfolio)):
         portfolio["registration_date"].iloc[i] = temp["registration_date"].iloc[0]
         if portfolio["normal_ros"].iloc[i]:
             portfolio["ros_payday"].iloc[i] = temp["underwriting_end_date"].iloc[0]
-portfolio["ros_due_date"] = [get_last_date(date_=portfolio["ros_payday"].iloc[i]) if
-                             ~portfolio["ros_payday"].isna().iloc[i] else np.nan
-                             for i in range(len(portfolio))]
+portfolio["ros_due_date"] = [
+    get_last_date(date_=portfolio["ros_payday"].iloc[i], db_connection=db_conn)
+    if ~portfolio["ros_payday"].isna().iloc[i] else np.nan for i in range(len(portfolio))
+]
 
 credit_table = pd.DataFrame([{"date": start_day, "remaining": credit}])
 dps_table = pd.DataFrame()
@@ -192,8 +166,8 @@ while True:
 
     # # checking for stroke put options payments and adding to cash_table
     #
-    # put_opt_tmp = put_options[
-    #     (put_options["payday"] == today) & (put_options["done"])].reset_index(drop=True, inplace=False)
+    # put_opt_tmp = embedded_put_options[
+    #     (embedded_put_options["payday"] == today) & (embedded_put_options["done"])].reset_index(drop=True, inplace=False)
     # if len(put_opt_tmp) > 0:
     #     for i in range(len(put_opt_tmp)):
     #         sorc_sym = put_opt_tmp['source_symbol'].iloc[i]
@@ -375,28 +349,30 @@ while True:
                     tmp_["registration_date"].iloc[0] = capital_changes_temp["registration_date"].iloc[i]
                     tmp_["ros_payday"].iloc[0] = capital_changes_temp["underwriting_end_date"].iloc[i]
                     tmp_["ros_due_date"].iloc[0] = get_last_date(
-                        date_=capital_changes_temp["underwriting_end_date"].iloc[i])
+                        date_=capital_changes_temp["underwriting_end_date"].iloc[i],
+                        db_connection=db_conn
+                    )
                     portfolio = pd.concat([portfolio, tmp_], axis=0, ignore_index=True)
 
     ##################################################################################
 
     # # checking for maturity date of put options
     #
-    # for i in range(len(put_options)):
-    #     if (put_options["maturity_date"].iloc[i] == today) and (put_options["done"].iloc[i] == False):
-    #         if put_options["asset_id"].iloc[i] in portfolio[portfolio["normal_share"]]["asset_id"].values:
-    #             idx_ = portfolio.index[(portfolio["asset_id"] == put_options["asset_id"].iloc[i]) &
+    # for i in range(len(embedded_put_options)):
+    #     if (embedded_put_options["maturity_date"].iloc[i] == today) and (embedded_put_options["done"].iloc[i] == False):
+    #         if embedded_put_options["asset_id"].iloc[i] in portfolio[portfolio["normal_share"]]["asset_id"].values:
+    #             idx_ = portfolio.index[(portfolio["asset_id"] == embedded_put_options["asset_id"].iloc[i]) &
     #                                    (portfolio["normal_share"])].values[0]
-    #             amount = put_options["amount"].iloc[i]
+    #             amount = embedded_put_options["amount"].iloc[i]
     #             total_cost = np.ceil((portfolio["total_cost"].iloc[idx_] / portfolio["amount"].iloc[idx_]) *
-    #                                  put_options["amount"].iloc[i])
-    #             strike_price = put_options["strike_price"].iloc[i]
+    #                                  embedded_put_options["amount"].iloc[i])
+    #             strike_price = embedded_put_options["strike_price"].iloc[i]
     #             value = strike_price * amount
-    #             desc = f"اعمال اختیار فروش تبعی سهم {portfolio['symbol'].iloc[idx_]} ({put_options['symbol'].iloc[i]})"
+    #             desc = f"اعمال اختیار فروش تبعی سهم {portfolio['symbol'].iloc[idx_]} ({embedded_put_options['symbol'].iloc[i]})"
     #             tmp_ = pd.DataFrame([{"symbol": portfolio["symbol"].iloc[idx_],
     #                                   "date": today,
     #                                   "original_symbol": portfolio["original_symbol"].iloc[idx_],
-    #                                   "asset_id": put_options["asset_id"].iloc[i],
+    #                                   "asset_id": embedded_put_options["asset_id"].iloc[i],
     #                                   "tse_symbol": portfolio["tse_symbol"].iloc[idx_], "sell_amount": amount,
     #                                   "strike_price": strike_price, "sell_cost": total_cost, "desc": desc}])
     #             trade_table = pd.concat([trade_table, tmp_],axis=0, ignore_index=True)
