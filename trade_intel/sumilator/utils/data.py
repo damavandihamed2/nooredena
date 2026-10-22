@@ -6,6 +6,14 @@ from pandas.core.frame import DataFrame
 
 
 
+def get_closed_dates(db_connection: Connection) -> DataFrame:
+    closed_dates = pd.read_sql(
+        "SELECT REPLACE([date], '-', '/') as date FROM [nooredenadb].[extra].[closed_days]",
+        db_connection
+    )
+    return closed_dates
+
+
 def get_last_date(date_: str, db_connection: Connection) -> str:
     query = "SELECT MAX(Jalali_1) AS date FROM [nooredenadb].[extra].[dim_date] WHERE MWeekDay NOT IN " \
             "('Thursday', 'Friday') AND Jalali_1 NOT IN (SELECT REPLACE([date], '-', '/') FROM " \
@@ -87,6 +95,15 @@ def get_embedded_put_options(db_connection: Connection) -> DataFrame:
 
 
 
+import pandas as pd
+from utils.database import make_connection
+
+
+db_connection = make_connection()
+
+start_date = "1404/10/30"
+
+portfolio = pd.read_sql(f"SELECT * FROM [nooredenadb].[company].[portfolio_history] WHERE date = '{start_date}'", db_connection)
 
 
 
