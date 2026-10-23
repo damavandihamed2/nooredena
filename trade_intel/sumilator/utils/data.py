@@ -29,6 +29,7 @@ def get_next_date(date_: str, db_connection: Connection) -> str:
     d_ = pd.read_sql(query, db_connection)["date"].iloc[0]
     return d_
 
+
 def get_fundamental_data(db_connection: Connection) -> dict[str, DataFrame]:
     dps_funds = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[dps_funds]", db_connection)
     dps_funds["date"] = dps_funds.apply(lambda row: jdatetime.datetime.fromgregorian(
@@ -53,6 +54,7 @@ def get_fundamental_data(db_connection: Connection) -> dict[str, DataFrame]:
         "dps_funds": dps_funds,
         "capital_changes": capital_changes,
     }
+
 
 def get_cashflow(start_date: str, db_connection: Connection, include_avalhami_redemption: bool = False) -> DataFrame:
     query_cashflow = (f"SELECT * FROM [nooredenadb].[company].[cashflow] where date > '{start_date}' "
@@ -93,21 +95,80 @@ def get_embedded_put_options(db_connection: Connection) -> DataFrame:
     return put_options
 
 
+def get_rahavard_symbols(db_connection: Connection) -> DataFrame:
+    rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_connection)
+    rahavard_symbols.replace({"symbol": {"ک": "ك", "ی": "ي"}}, regex=True, inplace=True)
+    rahavard_symbols.loc[rahavard_symbols['symbol'] == "دارايكم", 'symbol'] = "دارا يكم"
+    return rahavard_symbols
 
 
-import pandas as pd
-from utils.database import make_connection
+def get_symbols(db_connection: Connection) -> DataFrame:
+    symbols = pd.read_sql(
+        "SELECT symbol tse_symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols]",
+        db_connection
+    )
+    return symbols
 
 
-db_connection = make_connection()
-
-start_date = "1404/10/30"
-
-portfolio = pd.read_sql(f"SELECT * FROM [nooredenadb].[company].[portfolio_history] WHERE date = '{start_date}'", db_connection)
-
-
-
+def get_symbols_ros(db_connection: Connection) -> DataFrame:
+    symbols_ros = pd.read_sql(
+        "SELECT symbol_ros tse_symbol , symbol_id FROM [nooredenadb].[tsetmc].[symbols_ros]",
+        db_connection
+    )
+    return symbols_ros
 
 
+def get_start_portfolio(start_date: str, db_connection: Connection, capital_changes_df: DataFrame) -> dict[str, DataFrame | int]:
 
+    portfolio = pd.read_sql(
+        f"SELECT symbol, SUM(volume) amount, SUM(total_cost) total_cost, final_price, date, is_ros ros, "
+        f"is_paid_ros paid_ros FROM [nooredenadb].[company].[portfolio_history] WHERE date = '{start_date}' "
+        f"GROUP BY date, symbol, is_ros, is_paid_ros, final_price",
+        db_connection
+    )
 
+    portfolio["ros"] = portfolio["ros"] == 1
+    portfolio["paid_ros"] = portfolio["paid_ros"] == 1
+    portfolio["stock"] = portfolio["ros"] != 1
+    portfolio["bonus_share"] = False
+    portfolio.loc[portfolio['symbol'] == 'آكنتور', 'bonus_share'] = True
+    portfolio["normal_ros"] = portfolio["ros"]
+    portfolio["normal_share"] = (~portfolio["ros"]) & (~portfolio["paid_ros"]) & (~portfolio["bonus_share"])
+    portfolio['original_symbol'] = portfolio.apply(
+        lambda row: row['symbol'][:len(row["symbol"]) + (row["normal_ros"] * -1)],
+        axis=1
+    )
+
+    rahavard_symbols = get_rahavard_symbols(db_connection=db_connection)
+    portfolio = portfolio.merge(
+        rahavard_symbols[["symbol", "asset_id"]].rename(
+            {"symbol": "original_symbol"},
+            axis=1,
+            inplace=False
+        ),
+        on="original_symbol",
+        how="left"
+    )
+
+    portfolio["tse_symbol"] = portfolio["symbol"]
+
+    portfolio_value_start = int((portfolio["amount"] * portfolio["final_price"]).sum())
+
+    portfolio[["ros_payday", "registration_date"]] = [np.nan, np.nan]
+    for i in range(len(portfolio)):
+        if ~portfolio["normal_share"].iloc[i]:
+            temp = capital_changes_df[capital_changes_df["asset_id"] == portfolio["asset_id"].iloc[i]]
+            temp = temp[temp["date"] <= start_date]
+            temp = temp[~temp["registration_date"].isnull()].sort_values("date", ascending=False, inplace=False)
+            portfolio["registration_date"].iloc[i] = temp["registration_date"].iloc[0]
+            if portfolio["normal_ros"].iloc[i]:
+                portfolio["ros_payday"].iloc[i] = temp["underwriting_end_date"].iloc[0]
+    portfolio["ros_due_date"] = [
+        get_last_date(date_=portfolio["ros_payday"].iloc[i], db_connection=db_connection)
+        if ~portfolio["ros_payday"].isna().iloc[i] else np.nan for i in range(len(portfolio))
+    ]
+
+    return {
+        "portfolio": portfolio,
+        "value": portfolio_value_start
+    }
