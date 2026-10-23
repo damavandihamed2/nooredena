@@ -3,7 +3,7 @@ import pandas as pd
 from pyodbc import Connection
 
 from utils.database import make_connection
-from portfolio_return.credit.credit import get_credits_history
+from portfolio_return.credit.credit_history import get_credits_history
 
 
 
