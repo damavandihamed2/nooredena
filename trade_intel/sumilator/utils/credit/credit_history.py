@@ -37,7 +37,12 @@ def get_remaining_tadbir(db_connection: Connection) -> pd.DataFrame:
     return credits_tadbir
 
 
-def get_credits_history(start_date: str, end_date: str, db_connection: Connection) -> pd.DataFrame:
+def get_credits_history(
+        start_date: str,
+        end_date: str,
+        db_connection: Connection,
+        portfolio_ids_list: list[int] | None = None,
+) -> pd.DataFrame:
     dim_date = get_dim_date(db_connection=db_connection)
     remaining_rayan = get_remaining_rayan(db_connection=db_connection)
     remaining_tadbir = get_remaining_tadbir(db_connection=db_connection)
@@ -66,6 +71,11 @@ def get_credits_history(start_date: str, end_date: str, db_connection: Connectio
     df_result = df_result[(df_result["date"] >= start_date) & (df_result["date"] <= end_date)]
     df_result = df_result.sort_values(by=["date", "portfolio_id"], inplace=False, ignore_index=True)
     df_result.rename(columns={"remaining": "credit"}, inplace=True)
+
+    if portfolio_ids_list:
+        df_result = df_result[df_result["portfolio_id"].isin(portfolio_ids_list)]
+
+    df_result = df_result.groupby(by=["date"], as_index=False)["credit"].sum()
 
     return df_result
 
