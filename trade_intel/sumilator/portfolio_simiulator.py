@@ -14,6 +14,9 @@ from trade_intel.sumilator.utils.data import (
     get_last_date,
     get_fundamental_data,
     get_cashflow,
+    get_symbols,
+    get_symbols_ros,
+    get_start_portfolio,
 )
 
 
@@ -23,8 +26,6 @@ one_day = jdatetime.timedelta(days=1)
 credit_APR = 0.28
 start_day = "1404/10/30"
 end_day = "1405/07/01"
-# fixed_income_id = "3846143218462419"
-# fixed_income_name = "افران"
 
 db_conn = make_connection()
 if not db_conn:
@@ -32,10 +33,10 @@ if not db_conn:
 
 ################################################################################################
 
+symbols = get_symbols(db_connection=db_conn)
+symbols_ros = get_symbols_ros(db_connection=db_conn)
 credit = get_credits_history(start_date=start_day, end_date=end_day, db_connection=db_conn)
-
 closed_days = get_closed_dates(db_connection=db_conn)
-
 cashflow = get_cashflow(db_connection=db_conn, start_date=start_day, include_avalhami_redemption=False)
 
 fundamental_data = get_fundamental_data(db_connection=db_conn)
@@ -43,77 +44,11 @@ dps_funds = fundamental_data["dps_funds"]
 dps = fundamental_data["dps"]
 capital_changes = fundamental_data["capital_changes"]
 
-################################################################################################
-
-rahavard_symbols = pd.read_sql("SELECT * FROM [nooredenadb].[rahavard].[symbols]", db_conn)
-
-
-portfolio = pd.read_sql("SELECT [symbol], [type], [status], [amount], [total_cost], [final_price], [date] "
-                        "FROM [nooredenadb].[sigma].[portfolio] WHERE date = (SELECT MAX(date) FROM "
-                        f"[nooredenadb].[sigma].[portfolio] WHERE date <= '{start_day}')", db_conn)
-portfolio = portfolio[~portfolio["type"].str.contains("اختیار معامله")]
-
-portfolio["type"].replace(
-    {"صندوق": "fund", "سلف موازی": "forward_contract", "گواهی سپرده کالایی": "commodity_cd", "حق تقدم": "ros",
-     "اوراق": "bond", "سهام": "stock"},
-    inplace=True,
-    regex=False
-)
-portfolio["status"].replace(
-    {'حق\u200cتقدم پذیره نویسی شده': "paid_ros", "سهام جایزه": "bonus_share", "حق تقدم عادی": "normal_ros",
-     "حق تقدم استفاده نشده": "unused_ros", "سهام عادی": "normal_share", "عادی": "normal_share"},
-    inplace=True,
-    regex=False
-)
-portfolio.loc[portfolio['symbol'] == 'آکنتور', 'status'] = 'bonus_share'
-
-portfolio = pd.concat(
-    [
-        portfolio,
-        pd.get_dummies(portfolio["type"]), pd.get_dummies(portfolio["status"])
-    ],
-    axis=1
-).drop(
-    columns=["type", "status"],
-    inplace=False
-)
-
-for c in ["fund", "ros", "stock", "paid_ros", "bonus_share", "normal_ros", "normal_share"]:
-    if c not in portfolio.columns.values.tolist():
-        print(c)
-        # portfolio[c] = False
-
-portfolio['original_symbol'] = portfolio.apply(
-    lambda row: row['symbol'][:len(row["symbol"]) + (row["normal_ros"] * -1)], axis=1)
-
-portfolio = portfolio.merge(rahavard_symbols[["symbol", "asset_id"]].rename(
-    {"symbol": "original_symbol"}, axis=1, inplace=False), on="original_symbol", how="left")
-
-portfolio_value_start = int((portfolio["amount"] * portfolio["final_price"]).sum())
-
-symbols = pd.read_sql("SELECT symbol tse_symbol, symbol_id FROM [nooredenadb].[tsetmc].[symbols]", db_conn)
-symbols_ros = pd.read_sql("SELECT symbol_ros tse_symbol , symbol_id FROM [nooredenadb].[tsetmc].[symbols_ros]", db_conn)
-
-portfolio["tse_symbol"] = portfolio["symbol"].replace(
-    {"دارایکم": "دارا يكم"},regex=False, inplace=False).replace(
-    {"ی": "ي", "ک": "ك"}, regex=True, inplace=False)
+start_date_data = get_start_portfolio(start_date=start_day, capital_changes_df=capital_changes, db_connection=db_conn)
+portfolio = start_date_data["portfolio"]
+portfolio_value_start = start_date_data["value"]
 
 ################################################################################################
-
-portfolio["ros_payday"] = [np.nan] * len(portfolio)
-portfolio["registration_date"] = [np.nan] * len(portfolio)
-for i in range(len(portfolio)):
-    if ~portfolio["normal_share"].iloc[i]:
-        temp = capital_changes[capital_changes["asset_id"] == portfolio["asset_id"].iloc[i]]
-        temp = temp[temp["date"] <= start_day]
-        temp = temp[~temp["registration_date"].isnull()].sort_values("date", ascending=False, inplace=False)
-        portfolio["registration_date"].iloc[i] = temp["registration_date"].iloc[0]
-        if portfolio["normal_ros"].iloc[i]:
-            portfolio["ros_payday"].iloc[i] = temp["underwriting_end_date"].iloc[0]
-portfolio["ros_due_date"] = [
-    get_last_date(date_=portfolio["ros_payday"].iloc[i], db_connection=db_conn)
-    if ~portfolio["ros_payday"].isna().iloc[i] else np.nan for i in range(len(portfolio))
-]
 
 credit_table = pd.DataFrame([{"date": start_day, "remaining": credit}])
 dps_table = pd.DataFrame()
@@ -230,10 +165,10 @@ while True:
             cash_table = pd.concat([cash_table, cash_tmp], axis=0, ignore_index=0)
 
     portfolio = portfolio.groupby(
-        ['symbol', 'final_price', 'date', 'fund', 'ros', 'stock', 'bonus_share', 'normal_ros', 'normal_share',
+        ['symbol', 'final_price', 'date', 'ros', 'stock', 'bonus_share', 'normal_ros', 'normal_share',
          'paid_ros', 'original_symbol', 'asset_id', 'tse_symbol', 'ros_payday', 'registration_date', 'ros_due_date'],
         dropna=False, as_index=False).sum()
-    portfolio = portfolio[['symbol', 'amount', 'total_cost', 'final_price', 'date', 'fund', 'ros', 'stock',
+    portfolio = portfolio[['symbol', 'amount', 'total_cost', 'final_price', 'date', 'ros', 'stock',
                            'bonus_share', 'normal_ros', 'normal_share', 'paid_ros', 'original_symbol', 'asset_id',
                            'tse_symbol', 'ros_payday', 'registration_date', 'ros_due_date']]
 
@@ -298,7 +233,7 @@ while True:
 
     dps_funds_temp = dps_funds[dps_funds["date"] == today].reset_index(drop=True, inplace=False)
     dps_funds_temp = dps_funds_temp.merge(
-        portfolio[portfolio["fund"]][["amount", "symbol", "asset_id"]], on="asset_id", how="left")
+        portfolio[["amount", "symbol", "asset_id"]], on="asset_id", how="left")
     dps_funds_temp.dropna(subset="amount", inplace=True)
     dps_funds_temp["due_date"] = [(jdatetime.datetime.strptime(dps_funds_temp["date"].iloc[i], "%Y/%m/%d") +
                              (one_day * 14)).strftime("%Y/%m/%d") for i in range(len(dps_funds_temp))]
@@ -396,37 +331,6 @@ while True:
     if (sell_value == 0) and (cash_table["remain"].iloc[-1] > 1e7) and\
             (today_weekday < 5) and (today not in closed_days["date"].values):
         pass
-        # if fixed_income_name not in portfolio["symbol"].values:
-        #     fixed_income_price = pd.read_sql("SELECT [final_price] as price FROM [nooredenadb].[tsetmc].[symbols_history] "
-        #                                      f"WHERE symbol_id='{fixed_income_id}' and date={today_g_}",
-        #                                      db_conn)["price"].iloc[0]
-        #     fixed_income_df = pd.DataFrame([{'symbol': fixed_income_name, 'amount': 0, 'total_cost': 0, 'date': today,
-        #                                      'final_price': fixed_income_price, 'fund': True, 'ros': False,
-        #                                      'stock': False, 'bonus_share': False, 'normal_ros': False,
-        #                                      'normal_share': True, 'paid_ros': False,
-        #                                      'original_symbol': fixed_income_name,
-        #                                      'asset_id': "7799", 'tse_symbol': fixed_income_name}])
-        #     portfolio = pd.concat([portfolio, fixed_income_df], axis=0, ignore_index=True)
-        # else:
-        #     pass
-
-        # portfolio["buy_amount"] = (np.floor(cash_table["remain"].iloc[-1] / (portfolio["final_price"]))) * (
-        #         portfolio["symbol"] == fixed_income_name)
-        # portfolio["buy_cost"] = portfolio["buy_amount"] * portfolio["final_price"]
-        # portfolio["amount"] += portfolio["buy_amount"]
-        # portfolio["total_cost"] += portfolio["buy_cost"]
-        # buy_value = portfolio["buy_cost"].sum()
-        #
-        # buy_table = portfolio[portfolio["buy_amount"] > 0]
-        # buy_table["desc"] = [f"خرید صندوق درآمد ثابت ({fixed_income_name})"] * len(buy_table)
-        # buy_table["date"] = today
-        # trade_table = pd.concat([trade_table, buy_table], axis=0, ignore_index=True)
-        #
-        # portfolio.drop(columns=["buy_amount", "buy_cost"], inplace=True)
-        #
-        # cash_tmp = pd.DataFrame([{"date": today, "desc": f"خرید صندوق درآمد پابت ({fixed_income_name})", "credit": 0,
-        #                           "debit": buy_value, "remain": (cash_table["remain"].iloc[-1] - buy_value)}])
-        # cash_table = pd.concat([cash_table, cash_tmp], axis=0, ignore_index=0)
 
     if sell_value > 0:
 
@@ -435,34 +339,6 @@ while True:
         sell_value = sell_value + credit
         credit = 0
         credit_table["remaining"].iloc[-1] = 0
-
-        # portfolio["sell_amount"] = (np.ceil(sell_value / portfolio["final_price"]) *
-        #                             (portfolio["symbol"] == fixed_income_name))
-        # portfolio["sell_amount"] = portfolio[["amount", "sell_amount"]].min(axis=1)
-        # portfolio["sell_cost"] = np.ceil(portfolio["sell_amount"] * (portfolio["total_cost"] / portfolio["amount"]))
-        #
-        # sell_table = portfolio[portfolio["sell_amount"] > 0]
-        # sell_table["desc"] = [f"فروش صندوق درآمد ثابت ({fixed_income_name})"] * len(sell_table)
-        # sell_table["date"] = today
-        # trade_table = pd.concat([trade_table, sell_table], axis=0, ignore_index=True)
-        #
-        # fiv = (portfolio["sell_amount"] * portfolio["final_price"]).sum()
-        #
-        # portfolio["amount"] -= portfolio["sell_amount"]
-        # portfolio["total_cost"] -= portfolio["sell_cost"]
-        # portfolio.drop(columns=["sell_amount", "sell_cost"], inplace=True)
-        # portfolio = portfolio[portfolio["amount"] > 0].reset_index(drop=True, inplace=False)
-        #
-        # if fiv > 0:
-        #     cash_tmp = pd.DataFrame([{"date": today, "desc": desc, "credit": fiv, "debit": 0,
-        #                               "remain": cash_table["remain"].iloc[-1] + fiv}])
-        #     cash_table = pd.concat([cash_table, cash_tmp], axis=0, ignore_index=0)
-        # else:
-        #     pass
-        #
-        # # Sell fixed income first and if not enough sell portfolio equally weighted
-        #
-        # sell_value -= fiv
 
         if sell_value > 0:
 
