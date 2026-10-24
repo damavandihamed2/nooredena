@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore")
 one_day = jdatetime.timedelta(days=1)
 credit_APR = 0.28
 start_day = "1404/10/30"
-end_day = "1405/07/01"
+end_day = "1405/08/01"
 
 db_conn = make_connection()
 if not db_conn:
@@ -36,6 +36,7 @@ if not db_conn:
 symbols = get_symbols(db_connection=db_conn)
 symbols_ros = get_symbols_ros(db_connection=db_conn)
 credit = get_credits_history(start_date=start_day, end_date=end_day, db_connection=db_conn)
+credit = credit[credit["date"] == start_day]["credit"].values.tolist()[0]
 closed_days = get_closed_dates(db_connection=db_conn)
 cashflow = get_cashflow(db_connection=db_conn, start_date=start_day, include_avalhami_redemption=False)
 
@@ -376,7 +377,7 @@ while True:
 ##################################################################################
 
 
-files_address = "D:/database/portfolio simulation/1405-10-30/08-month"
+files_address = "D:/database/portfolio simulation/1405-10-30/09-month"
 
 dps_table.to_excel(f"{files_address}/dps_table.xlsx", index=False)
 dps_funds_table.to_excel(f"{files_address}/dps_funds_table.xlsx", index=False)
