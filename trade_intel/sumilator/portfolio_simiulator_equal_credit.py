@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 
 from utils.database import make_connection
-from trade_intel.utils.data import get_last_date, get_next_date
-from trade_intel.utils.funcs import relu, capital_increase, CapChangeParams
+from trade_intel.sumilator.utils.data import get_last_date, get_next_date
+from trade_intel.sumilator.utils.funcs import relu, capital_increase, CapChangeParams
 
 
 
