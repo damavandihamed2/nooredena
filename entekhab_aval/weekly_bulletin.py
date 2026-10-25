@@ -244,9 +244,12 @@ oil_brent["brent_oil"] = oil_brent["brent_oil"].astype(float)
 
 ##################################################
 
-query_bandar_crack = ("SELECT date_jalali as date, price crack_bandar FROM [nooredenadb].[commodity].[commodities_history]"
-                      " WHERE commodity='کرک شبندر جدید'")
-bandar_crack = pd.read_sql(query_bandar_crack, db_conn)
+bandar_crack = pd.read_sql(
+    "SELECT date_jalali as date, price crack_bandar FROM [nooredenadb].[commodity].[commodities_history] "
+    "WHERE commodity_id=(SELECT commodity_id FROM [nooredenadb].[commodity].[commodities] "
+    "WHERE commodity='کرک شبندر جدید')",
+    db_conn
+)
 
 ##################################################
 

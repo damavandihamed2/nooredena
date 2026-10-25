@@ -4,13 +4,14 @@ from tqdm import tqdm
 import requests as rq
 from time import sleep
 from bs4 import BeautifulSoup
+from pandas.core.frame import DataFrame
 import json, random, warnings, jdatetime
 # from playwright.sync_api import sync_playwright
-
 
 from tgju import tgju
 from enigma import enigma
 from utils.database import make_connection, insert_to_database
+
 
 
 warnings.filterwarnings("ignore")
@@ -28,7 +29,27 @@ today_g = today.togregorian().strftime("%Y-%m-%d")
 dim_date = pd.read_sql("SELECT TRY_CONVERT(VARCHAR, Miladi) as Miladi, REPLACE(Jalali_1, '/', '-') as date "
                        "FROM [nooredenadb].[extra].[dim_date]", db_conn)
 
+
+def get_commodity(
+        query_dict: dict[str, str | list[str]]
+) -> DataFrame:
+
+    if not query_dict:
+        raise ValueError("query_dict must contain at least one key")
+
+    q_ = " AND ".join([
+        f"{q}='{query_dict[q]}'" if  not isinstance(query_dict[q], list) else f"{q} IN {str(tuple(query_dict[q]))}"
+        for q in query_dict
+    ])
+    cmdt_id_df = pd.read_sql(f"SELECT * FROM [nooredenadb].[commodity].[commodities] WHERE {q_}", db_conn)
+
+    return cmdt_id_df
+
+
 #######################################################################################################################
+
+cmdt_gas = get_commodity(query_dict={"commodity": "گاز خوراک", "reference": "وزارت نفت"})
+cmdt_gas_id = int(cmdt_gas.commodity_id.values[0])
 
 gas = pd.read_excel(gas_path)
 gas["date_jalali"].replace({" ": "", "/": "-"}, regex=True, inplace=True)
@@ -36,25 +57,28 @@ gas = gas[["date_jalali", "خوراک صنایع (دلار بر مترمکعب)"
     {"خوراک صنایع (دلار بر مترمکعب)": "price"}, inplace=False, axis=1)
 gas = gas.merge(dim_date.rename({"date": "date_jalali", "Miladi": "date"}, axis=1, inplace=False),
                 on="date_jalali", how="left")
-gas[["owner", "commodity", "unit", "reference"]] = ["razmehgir", "گاز خوراک", "دلار بر مترمکعب", "وزارت نفت"]
-gas["name"] = gas["commodity"] + " - " + gas["reference"] + " (" + gas["unit"] + ")"
+gas["commodity_id"] = cmdt_gas_id
 
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE owner='razmehgir' AND "
-             "commodity='گاز خوراک' AND unit='دلار بر مترمکعب' AND reference='وزارت نفت'")
+crsr.execute(
+    f"DELETE FROM [nooredenadb].[commodity].[commodities_history] "
+    f"WHERE commodity_id={cmdt_gas_id}"
+)
 crsr.close()
 insert_to_database(dataframe=gas, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
+cmdt_banks = get_commodity(query_dict={"commodity": ["اسپرد عملیات اصلی", "نرخ موثر درآمد تسهیلات", "هزینه موثر سپرده"]})
+
 query_banks_data = ("SELECT temp3.reference, temp3.price, temp3.commodity, temp3.unit, temp3.owner, temp4.date_jalali,"
                     " temp4.date FROM (SELECT [bank] AS reference, ([fiscalYear] - 621) AS fiscalYear , [fiscalMonth],"
                     " [operational_spread] as price, 'اسپرد عملیات اصلی' as commodity, 'درصد' as unit, 'pirnajafi' as "
                     "owner FROM [nooredenadb].[bourseview].[banks_data] UNION SELECT [bank] AS reference, "
-                    "([fiscalYear] - 621) AS fiscalYear , [fiscalMonth], [facilities_effective_rate] as price,"
+                    "([fiscalYear] - 621) AS fiscalYear , [fiscalMonth], [facilities_effective rate] as price,"
                     " 'نرخ موثر درآمد تسهیلات' as commodity, 'درصد' as unit, 'pirnajafi' as "
                     "owner FROM [nooredenadb].[bourseview].[banks_data] UNION SELECT [bank] AS reference, "
-                    "([fiscalYear] - 621) AS fiscalYear , [fiscalMonth], [deposits_effective_rate] as price,"
+                    "([fiscalYear] - 621) AS fiscalYear , [fiscalMonth], [deposits_effective rate] as price,"
                     " 'هزینه موثر سپرده' as commodity, 'درصد' as unit, 'pirnajafi' as owner "
                     "FROM [nooredenadb].[bourseview].[banks_data]) as temp3 LEFT JOIN "
                     "(SELECT temp1.*, temp2.date FROM (SELECT max(REPLACE(Jalali_1, '/', '-')) "
@@ -66,22 +90,38 @@ query_banks_data = ("SELECT temp3.reference, temp3.price, temp3.commodity, temp3
 banks_data = pd.read_sql(query_banks_data, db_conn)
 banks_data["reference"].replace({"ي": "ی", "ك": "ک"}, inplace=True, regex=True)
 banks_data["price"] *= 100
-banks_data["name"] = banks_data["commodity"] + " - " + banks_data["reference"] + " (" + banks_data["unit"] + ")"
+
+banks_data = banks_data.merge(
+    cmdt_banks[["commodity_id", "commodity", "reference", "unit"]],
+    on=["commodity", "reference", "unit"],
+    how="left"
+)
+banks_data = banks_data[["commodity_id", "date", "date_jalali", "price"]]
+cmdt_banks_ids = cmdt_banks.commodity_id.unique().tolist()
 
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity IN ('اسپرد عملیات اصلی', 'نرخ موثر درآمد تسهیلات', 'هزینه موثر سپرده')")
+crsr.execute(
+    f"DELETE FROM [nooredenadb].[commodity].[commodities_history] "
+    f"WHERE commodity_id IN {str(tuple(cmdt_banks_ids))}"
+)
 crsr.close()
 insert_to_database(dataframe=banks_data, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
+cmdt_amar_center = get_commodity(query_dict={"owner": "jahanshahi"})
+
 query_amar_center_data = "SELECT * FROM [nooredenadb].[economic].[commodities_amar_centre]"
 amar_center_data = pd.read_sql(query_amar_center_data, db_conn)
-amar_center_data["name"] = (amar_center_data["commodity"] + " - " + amar_center_data["reference"] + " (" +
-                            amar_center_data["unit"] + ")")
+amar_center_data = amar_center_data.merge(cmdt_amar_center, on=["commodity", "reference", "unit", "owner"], how="left")
+amar_center_data = amar_center_data[["commodity_id", "date", "date_jalali", "price"]]
 
+cmdt_amar_center_ids = cmdt_amar_center.commodity_id.unique().tolist()
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE owner='jahanshahi'")
+crsr.execute(
+    f"DELETE FROM [nooredenadb].[commodity].[commodities_history] "
+    f"WHERE commodity_id In {str(tuple(cmdt_amar_center_ids))}"
+)
 crsr.close()
 insert_to_database(dataframe=amar_center_data, database_table="[nooredenadb].[commodity].[commodities_history]")
 
@@ -103,11 +143,11 @@ for i in tqdm(range(len(cmdt))):
         commodity_df = pd.DataFrame(commodity_chart_data)
         commodity_df = commodity_df[commodity_df["date"] <= today_g].reset_index(drop=True)
         commodity_df["owner"] = cmdt["owner"].iloc[i]
-        commodity_df["commodity"] = commodity_market_data[0]["first_operand_commodity"]
-        commodity_df["unit"] = commodity_market_data[0]["first_operand_unit"]
-        commodity_df["reference"] = commodity_market_data[0]["first_operand_reference"]
-        if ((commodity_market_data[0]["first_operand_commodity"] == "ذرت") and
-                (commodity_market_data[0]["first_operand_reference"] == "investing.com")):
+        commodity_df["commodity"] = commodity_market_data[0]["first_operand_commodity_name"]
+        commodity_df["unit"] = commodity_market_data[0]["first_operand_unit_name"]
+        commodity_df["reference"] = commodity_market_data[0]["first_operand_reference_name"]
+        if ((commodity_market_data[0]["first_operand_commodity_name"] == "ذرت") and
+                (commodity_market_data[0]["first_operand_reference_name"] == "investing.com")):
             commodity_df["result_1"] = commodity_df["result_1"] * ((1/100) * (39.37))
         temporary_df = pd.concat([temporary_df, commodity_df], axis=0, ignore_index=True)
     # sleep(random.randint(100, 301) / 100)
@@ -181,21 +221,28 @@ complete_df = complete_df.merge(
                     ), on="date", how="left").sort_values(by="date", inplace=False, ignore_index=True)
 complete_df["price"] = complete_df["price"].astype(dtype="float")
 
-max_dates = pd.read_sql("SELECT MAX(date) AS maxdate, [name] FROM [nooredenadb].[commodity].[commodities_history] "
-                        "GROUP BY [name]", db_conn)
-complete_df = complete_df.merge(max_dates, on="name", how="left")
+max_dates = pd.read_sql(
+    "SELECT ch.maxdate, c.* FROM (SELECT commodity_id, MAX(date) maxdate FROM "
+    "[nooredenadb].[commodity].[commodities_history] GROUP BY commodity_id) ch LEFT JOIN "
+    "[nooredenadb].[commodity].[commodities] c ON ch.commodity_id=c.commodity_id",
+    db_conn
+)
+complete_df = complete_df.merge(max_dates, on=["commodity", "reference", "unit", "name", "owner"], how="left")
 complete_df["maxdate"].fillna("0", inplace=True)
 
-complete_df = complete_df[complete_df["date"] > complete_df["maxdate"]].drop(
-    columns="maxdate", inplace=False).reset_index(drop=True, inplace=False)
+complete_df = complete_df[complete_df["date"] > complete_df["maxdate"]]
 if len(complete_df) > 0:
+    complete_df = complete_df[["commodity_id", "date", "date_jalali", "price"]].reset_index(drop=True, inplace=False)
     insert_to_database(dataframe=complete_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ####################################################################################################################
 
 print("gathering OilPrice data" + "\n")
+
+cmdt_oil = get_commodity(query_dict={"commodity": ["نفت برنت", "نفت عمان", "نفت دبی"]})
+
 oil_price_id = ["46", "48", "144"]
-csrf = rq.get("https://oilprice.com/ajax/csrf", proxies=proxies)
+csrf = rq.get("https://oilprice.com/ajax/csrf")
 hash = json.loads(csrf.text)["hash"]
 oil_price_dataframe = pd.DataFrame()
 for i in range(len(oil_price_id)):
@@ -209,7 +256,7 @@ for i in range(len(oil_price_id)):
                         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                                       "(KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"}
     oil_price = rq.post(url="https://oilprice.com/freewidgets/json_get_oilprices",
-                        data=oil_price_payload, headers=oil_price_header, proxies=proxies)
+                        data=oil_price_payload, headers=oil_price_header)
     oil_price_df = pd.DataFrame(oil_price.json()["prices"])
     oil_price_df["time"] = pd.to_datetime(oil_price_df["time"], unit="s").dt.strftime("%Y-%m-%d")
     oil_price_df = oil_price_df.drop_duplicates(
@@ -225,20 +272,17 @@ oil_price_dataframe.dropna(subset=["price"], inplace=True, ignore_index=True)
 oil_price_dataframe["price"] = oil_price_dataframe["price"].astype(dtype="float")
 oil_price_dataframe["commodity"].replace(
     {"Brent Crude": "نفت برنت", "DME Oman":  "نفت عمان", "Dubai": "نفت دبی"}, inplace=True)
-oil_price_dataframe[["owner", "unit", "reference"]] = ["razmehgir", "دلار بر بشکه", "OIL PRICE"]
-oil_price_dataframe["name"] = (oil_price_dataframe["commodity"] + " - " + oil_price_dataframe["reference"] +
-                               " (" + oil_price_dataframe["unit"] + ")")
 oil_price_dataframe = oil_price_dataframe.merge(
     dim_date.rename({"date": "date_jalali", "Miladi": "date"}, axis=1, inplace=False), on="date", how="left"
 ).sort_values(by="date", inplace=False, ignore_index=True)
 
-oil_price_dataframe_mindate = oil_price_dataframe[["date", "name"]].groupby(by="name", as_index=False).min()
-query_oilprice = ""
-for i in range(len(oil_price_dataframe_mindate)):
-    query_oilprice += (f"(name='{oil_price_dataframe_mindate["name"].iloc[i]}' AND "
-                       f"date>='{oil_price_dataframe_mindate["date"].iloc[i]}') OR ")
+oil_price_dataframe = oil_price_dataframe.merge(cmdt_oil, on="commodity", how="left")
+oil_price_dataframe = oil_price_dataframe[["commodity_id", "date", "date_jalali", "price"]]
+
+oil_price_dataframe_mindate = oil_price_dataframe.groupby(by="commodity_id", as_index=False)["date"].min()
+query_oilprice = " OR ".join([f"(commodity_id={row.commodity_id} AND date>='{row.date}')" for row in oil_price_dataframe_mindate.itertuples()])
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE " + query_oilprice[: -4])
+crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE {query_oilprice}")
 crsr.close()
 insert_to_database(dataframe=oil_price_dataframe, database_table="[nooredenadb].[commodity].[commodities_history]")
 print("Done!")
@@ -263,13 +307,18 @@ data = pd.DataFrame(data=trs, columns=["date_jalali", "date", "شکر خام ن�
 data = data[:20].replace("/", "-", regex=True, inplace=False)
 
 data = pd.melt(data, id_vars=["date_jalali", "date"], var_name="commodity", value_name="price")
-data[["owner", "unit", "reference"]] = ["maleklou", "دلار بر تن", "isfs.ir"]
-data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit"] + ")"
 
+cmdt_suger = get_commodity(query_dict={"commodity": ["شکر خام نيويورک", "شکر سفيد لندن"]})
+
+data = data.merge(cmdt_suger, on="commodity", how="left")
+data = data[["commodity_id", "date", "date_jalali", "price"]]
+
+cmdt_suger_ids = cmdt_suger.commodity_id.unique().tolist()
 crsr = db_conn.cursor()
-crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity "
-             f"IN ('شکر خام نيويورک', 'شکر سفيد لندن') AND owner='maleklou' AND "
-             f"reference='isfs.ir' AND date>='{data['date'].min()}'")
+crsr.execute(
+    f"DELETE FROM [nooredenadb].[commodity].[commodities_history] "
+    f"WHERE commodity IN {str(tuple(cmdt_suger_ids))} AND date>='{data['date'].min()}'"
+)
 crsr.close()
 insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_history]")
 print("Done!")
@@ -278,13 +327,17 @@ print("Done!")
 
 commodities = ["اوره خلیج فارس - investing.com (دلار بر تن)", "اسلب - متال بولتن (دلار بر تن)",
                "بیلت - متال بولتن (دلار بر تن)", "متانول پلتس - چین پلتس (دلار بر تن)"]
+cmdt_today = get_commodity(query_dict={"name": commodities})
+
 table = pd.DataFrame()
-for i in range(len(commodities)):
-    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_history] "
-                     f"where name='{commodities[i]}' ORDER BY [date]",
-                     db_conn)
+for i in range(len(cmdt_today)):
+    df = pd.read_sql(
+        f"SELECT date, price FROM [nooredenadb].[commodity].[commodities_history] "
+        f"WHERE commodity_id={int(cmdt_today.iloc[i].commodity_id)} ORDER BY date",
+        db_conn
+    )
     tmp = pd.DataFrame(data={
-        "name": [df["commodity"].iloc[0]],
+        "name": [cmdt_today.iloc[i].commodity],
         "current_price": [df["price"].iloc[-1]],
         "current_change": [df["price"].iloc[-1] - df["price"].iloc[-2]],
         "current_change_percent": [
@@ -302,73 +355,73 @@ for i in range(len(table)):
 
 ####################################################################################################################
 
-response = rq.get("https://itpnews.com/persian/")
-# php_session_id = response.headers["set-cookie"].split(";")[0]
-itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_itpnews]", db_conn)
-
-from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=10)).strftime("%Y/%m/%d")
-to_d = jdatetime.datetime.today().strftime("%Y/%m/%d")
-headers_ = {
-    # "cookie": f"{php_session_id};"
-}
-cmdty_df = pd.DataFrame()
-for c in range(len(itp_commodities)):
-    cmdt = itp_commodities["commodity"].iloc[c]
-    id_ = itp_commodities["id"].iloc[c]
-    print(f"fetching {cmdt} data")
-    response_ = rq.get(f"https://itpnews.com/fa/engine/ajax/get_prices.php?type=chart&p_id={id_}&"
-                       f"format=d&from_d={from_d}&to_d={to_d}")
-    response_data = response_.json()
-    if len(response_data) > 0:
-        response_data = pd.DataFrame(data={"date_jalali": response_data["cats"], "price": response_data["avg_price"]})
-        response_data["commodity"] = [cmdt] * len(response_data)
-        cmdty_df = pd.concat([cmdty_df, response_data], axis=0, ignore_index=True)
-    else:
-        print(f"No data for {cmdt}")
-    sleep(random.randint(100, 301) / 100)
-
-month_j_n = {'فروردین': "01", 'اردیبهشت': "02", 'خرداد': "03", 'تیر': "04", 'مرداد': "05", 'شهریور': "06",
-             'مهر': "07", 'آبان': "08", 'آذر': "09", 'دی': "10", 'بهمن': "11", 'اسفند': "12"}
-cmdty_df["date_jalali"].replace(month_j_n, inplace=True, regex=True)
-cmdty_df["date"] = ""
-for i in tqdm(range(len(cmdty_df))):
-    date_ = jdatetime.datetime.strptime(cmdty_df["date_jalali"].iloc[i], "%m-%d-%Y")
-    cmdty_df["date_jalali"].iloc[i] = date_.strftime("%Y-%m-%d")
-    cmdty_df["date"].iloc[i] = date_.togregorian().strftime("%Y-%m-%d")
-
-cmdty_df[["owner", "reference", "unit"]] = ["shayan", "itpnews", "ریال بر واحد"]
-cmdty_df["name"] = cmdty_df["commodity"] + " - " + cmdty_df["reference"] + " (" + cmdty_df["unit"] + ")"
-cmdty_df.drop_duplicates(subset=["commodity", "date"], keep="first", ignore_index=True, inplace=True)
-
-try:
-    crsr = db_conn.cursor()
-    crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
-                 f"date_jalali>='{from_d.replace('/', '-')}' AND reference='itpnews'")
-    crsr.close()
-    insert_to_database(dataframe=cmdty_df, database_table="[nooredenadb].[commodity].[commodities_history]")
-except Exception as e:
-    print(e)
+# response = rq.get("https://itpnews.com/persian/")
+# # php_session_id = response.headers["set-cookie"].split(";")[0]
+# itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_itpnews]", db_conn)
+#
+# from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=10)).strftime("%Y/%m/%d")
+# to_d = jdatetime.datetime.today().strftime("%Y/%m/%d")
+# headers_ = {
+#     # "cookie": f"{php_session_id};"
+# }
+# cmdty_df = pd.DataFrame()
+# for c in range(len(itp_commodities)):
+#     cmdt = itp_commodities["commodity"].iloc[c]
+#     id_ = itp_commodities["id"].iloc[c]
+#     print(f"fetching {cmdt} data")
+#     response_ = rq.get(f"https://itpnews.com/fa/engine/ajax/get_prices.php?type=chart&p_id={id_}&"
+#                        f"format=d&from_d={from_d}&to_d={to_d}")
+#     response_data = response_.json()
+#     if len(response_data) > 0:
+#         response_data = pd.DataFrame(data={"date_jalali": response_data["cats"], "price": response_data["avg_price"]})
+#         response_data["commodity"] = [cmdt] * len(response_data)
+#         cmdty_df = pd.concat([cmdty_df, response_data], axis=0, ignore_index=True)
+#     else:
+#         print(f"No data for {cmdt}")
+#     sleep(random.randint(100, 301) / 100)
+#
+# month_j_n = {'فروردین': "01", 'اردیبهشت': "02", 'خرداد': "03", 'تیر': "04", 'مرداد': "05", 'شهریور': "06",
+#              'مهر': "07", 'آبان': "08", 'آذر': "09", 'دی': "10", 'بهمن': "11", 'اسفند': "12"}
+# cmdty_df["date_jalali"].replace(month_j_n, inplace=True, regex=True)
+# cmdty_df["date"] = ""
+# for i in tqdm(range(len(cmdty_df))):
+#     date_ = jdatetime.datetime.strptime(cmdty_df["date_jalali"].iloc[i], "%m-%d-%Y")
+#     cmdty_df["date_jalali"].iloc[i] = date_.strftime("%Y-%m-%d")
+#     cmdty_df["date"].iloc[i] = date_.togregorian().strftime("%Y-%m-%d")
+#
+# cmdty_df[["owner", "reference", "unit"]] = ["shayan", "itpnews", "ریال بر واحد"]
+# cmdty_df["name"] = cmdty_df["commodity"] + " - " + cmdty_df["reference"] + " (" + cmdty_df["unit"] + ")"
+# cmdty_df.drop_duplicates(subset=["commodity", "date"], keep="first", ignore_index=True, inplace=True)
+#
+# try:
+#     crsr = db_conn.cursor()
+#     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
+#                  f"date_jalali>='{from_d.replace('/', '-')}' AND reference='itpnews'")
+#     crsr.close()
+#     insert_to_database(dataframe=cmdty_df, database_table="[nooredenadb].[commodity].[commodities_history]")
+# except Exception as e:
+#     print(e)
 
 #######################################################################################################################
-
-from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=60)).strftime("%Y-%m-%d")
-
-data = tgju.get_symbol_data_table(symbol="commodities-us-wheat")
-data = data[["date", "close_price"]].rename({"date": "Miladi", "close_price": "price"}, axis=1, inplace=False)
-data["commodity"] = "گندم / بازار آمریکا"
-data["price"] = (data["price"] / 27.2155) * 10
-data = data.merge(dim_date, on="Miladi", how="left").sort_values(by="date", inplace=False, ignore_index=True)
-data.rename(mapper={"date": "date_jalali", "Miladi": "date"}, inplace=True, axis=1)
-data[["reference", "owner", "unit"]] = ["tgju.org", "pirnajafi", "دلار بر تن"]
-data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit"] + ")"
-data = data[data["date_jalali"] >= from_d].reset_index(drop=True, inplace=False)
-
-if len(data) > 0:
-    crsr = db_conn.cursor()
-    crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
-                 f"date_jalali >='{from_d}' AND commodity='گندم / بازار آمریکا'")
-    crsr.close()
-    insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_history]")
+#
+# from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=60)).strftime("%Y-%m-%d")
+#
+# data = tgju.get_symbol_data_table(symbol="commodities-us-wheat")
+# data = data[["date", "close_price"]].rename({"date": "Miladi", "close_price": "price"}, axis=1, inplace=False)
+# data["commodity"] = "گندم / بازار آمریکا"
+# data["price"] = (data["price"] / 27.2155) * 10
+# data = data.merge(dim_date, on="Miladi", how="left").sort_values(by="date", inplace=False, ignore_index=True)
+# data.rename(mapper={"date": "date_jalali", "Miladi": "date"}, inplace=True, axis=1)
+# data[["reference", "owner", "unit"]] = ["tgju.org", "pirnajafi", "دلار بر تن"]
+# data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit"] + ")"
+# data = data[data["date_jalali"] >= from_d].reset_index(drop=True, inplace=False)
+#
+# if len(data) > 0:
+#     crsr = db_conn.cursor()
+#     crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
+#                  f"date_jalali >='{from_d}' AND commodity='گندم / بازار آمریکا'")
+#     crsr.close()
+#     insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
