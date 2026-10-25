@@ -13,7 +13,7 @@ today = jdatetime.datetime.today()
 db_conn = make_connection()
 
 cmdty = pd.read_sql("SELECT [date], [date_jalali], [price] ,[commodity] ,[reference] FROM "
-                    "[nooredenadb].[commodity].[commodities_data]", db_conn)
+                    "[nooredenadb].[commodity].[commodities_history]", db_conn)
 
 brent = cmdty[cmdty["commodity"] == "نفت برنت"]
 dubai = cmdty[cmdty["commodity"] == "نفت دبی"]
@@ -463,9 +463,9 @@ for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
     cursor = db_conn.cursor()
-    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
+    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE name='{nn}'")
     cursor.close()
-    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ########################################################################################################################
 
@@ -527,9 +527,9 @@ for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
     cursor = db_conn.cursor()
-    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
+    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE name='{nn}'")
     cursor.close()
-    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ########################################################################################################################
 ########################################################################################################################
@@ -729,17 +729,17 @@ chart_df["unit"] = ["-"] * len(chart_df)
 names = chart_df["name"].unique().tolist()
 for n in tqdm(range(len(names))):
     cursor_ = db_conn.cursor()
-    cursor_.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{names[n]}'")
+    cursor_.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE name='{names[n]}'")
     cursor_.close()
 
-insert_to_database(dataframe=chart_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=chart_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ####################################################################################################################
 
 commodities = ["کرک نوری جدید", "کرک شبندر جدید"]
 table = pd.DataFrame()
 for i in range(len(commodities)):
-    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] where "
+    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_history] where "
                      f"commodity='{commodities[i]}' ORDER BY [date]", db_conn)
     tmp = pd.DataFrame(data={
         "name": [df["commodity"].iloc[0]],

@@ -7,7 +7,7 @@ from .base import Base
 
 
 class CommodityCommoditiesData(Base):
-    __tablename__ = "commodities_data"
+    __tablename__ = "commodities_history"
     __table_args__ = {"schema": "commodity"}
 
     date: Optional[str] = Column(String(50), nullable=False, primary_key=True)
@@ -21,7 +21,7 @@ class CommodityCommoditiesData(Base):
 
 
 class CommodityCommoditiesDetailData(Base):
-    __tablename__ = "commodities_detail_data"
+    __tablename__ = "commodities_detail"
     __table_args__ = {"schema": "commodity"}
 
     owner: Optional[str] = Column(Text, nullable=True)
@@ -37,7 +37,7 @@ class CommodityCommoditiesDetailData(Base):
 
 
 class CommodityCommoditiesItpnewsDetailData(Base):
-    __tablename__ = "commodities_itpnews_detail_data"
+    __tablename__ = "commodities_detail_itpnews"
     __table_args__ = {"schema": "commodity"}
 
     commodity: Optional[str] = Column(String(155), nullable=True)

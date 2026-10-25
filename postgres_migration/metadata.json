@@ -14720,7 +14720,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 1,
 		"column_name" : "date",
 		"data_type" : "varchar",
@@ -14731,7 +14731,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 2,
 		"column_name" : "date_jalali",
 		"data_type" : "varchar",
@@ -14742,7 +14742,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 3,
 		"column_name" : "price",
 		"data_type" : "float",
@@ -14753,7 +14753,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 4,
 		"column_name" : "owner",
 		"data_type" : "varchar",
@@ -14764,7 +14764,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 5,
 		"column_name" : "commodity",
 		"data_type" : "varchar",
@@ -14775,7 +14775,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 6,
 		"column_name" : "unit",
 		"data_type" : "varchar",
@@ -14786,7 +14786,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 7,
 		"column_name" : "reference",
 		"data_type" : "varchar",
@@ -14797,7 +14797,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_data",
+		"table_name" : "commodities_history",
 		"column_id" : 8,
 		"column_name" : "name",
 		"data_type" : "varchar",
@@ -14808,7 +14808,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 1,
 		"column_name" : "owner",
 		"data_type" : "varchar",
@@ -14819,7 +14819,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 2,
 		"column_name" : "id",
 		"data_type" : "varchar",
@@ -14830,7 +14830,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 3,
 		"column_name" : "commodity",
 		"data_type" : "varchar",
@@ -14841,7 +14841,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 4,
 		"column_name" : "commodity_id",
 		"data_type" : "varchar",
@@ -14852,7 +14852,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 5,
 		"column_name" : "unit",
 		"data_type" : "varchar",
@@ -14863,7 +14863,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 6,
 		"column_name" : "reference",
 		"data_type" : "varchar",
@@ -14874,7 +14874,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 7,
 		"column_name" : "retrieve_slug",
 		"data_type" : "varchar",
@@ -14885,7 +14885,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 8,
 		"column_name" : "name",
 		"data_type" : "varchar",
@@ -14896,7 +14896,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 9,
 		"column_name" : "result_sheet",
 		"data_type" : "varchar",
@@ -14907,7 +14907,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_detail_data",
+		"table_name" : "commodities_detail",
 		"column_id" : 10,
 		"column_name" : "result_name",
 		"data_type" : "varchar",
@@ -14918,7 +14918,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_itpnews_detail_data",
+		"table_name" : "commodities_detail_itpnews",
 		"column_id" : 1,
 		"column_name" : "commodity",
 		"data_type" : "varchar",
@@ -14929,7 +14929,7 @@
 	},
 	{
 		"schema_name" : "commodity",
-		"table_name" : "commodities_itpnews_detail_data",
+		"table_name" : "commodities_detail_itpnews",
 		"column_id" : 2,
 		"column_name" : "id",
 		"data_type" : "varchar",

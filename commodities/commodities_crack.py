@@ -16,10 +16,10 @@ dim_date = pd.read_sql("SELECT TRY_CONVERT(VARCHAR, Miladi) as Miladi, REPLACE(J
                        "FROM [nooredenadb].[extra].[dim_date]", db_conn)
 
 query_oil = ("SELECT COALESCE(b.date, d.date, o.date) AS date,b.brent,d.dubai,o.oman FROM (SELECT [date_jalali] AS "
-             "date,[price] AS brent FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نفت برنت') b FULL"
-             " OUTER JOIN (SELECT [date_jalali] AS date,[price] AS dubai FROM [nooredenadb].[commodity].[commodities_data]"
+             "date,[price] AS brent FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity='نفت برنت') b FULL"
+             " OUTER JOIN (SELECT [date_jalali] AS date,[price] AS dubai FROM [nooredenadb].[commodity].[commodities_history]"
              " WHERE commodity='نفت دبی') d ON b.date=d.date FULL OUTER JOIN (SELECT [date_jalali] AS date,[price]"
-             " AS oman FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نفت عمان') o ON COALESCE(b.date"
+             " AS oman FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity='نفت عمان') o ON COALESCE(b.date"
              ",d.date)=o.date ORDER BY date;")
 oil = pd.read_sql(query_oil, db_conn)
 
@@ -84,7 +84,7 @@ commodity_petrol = pd.DataFrame(
 oil_refined = pd.DataFrame(columns=["date"])
 for c in tqdm(range(len(commodity_petrol))):
     name, commodity, reference = commodity_petrol.loc[c]
-    q = (f"SELECT date_jalali AS date, price AS [{name}] FROM [nooredenadb].[commodity].[commodities_data] "
+    q = (f"SELECT date_jalali AS date, price AS [{name}] FROM [nooredenadb].[commodity].[commodities_history] "
          f"WHERE commodity='{commodity}' AND reference='{reference}'")
     temp = pd.read_sql(q, db_conn)
     oil_refined = oil_refined.merge(temp, on="date", how="outer")
@@ -111,7 +111,7 @@ ffill_cols = ["vb_nrc", "lubecut_heavy_nrc", "pbr1220", "pbr1202", "sbr1712", "s
 oil_refined.loc[:, ffill_cols] = oil_refined.loc[:, ffill_cols].ffill(inplace=False)
 
 lpg_missing_data = pd.read_sql(f"SELECT [date_jalali] as date, [price] as temp FROM "
-                               f"[nooredenadb].[commodity].[commodities_data] WHERE commodity='گاز مایع'", db_conn)
+                               f"[nooredenadb].[commodity].[commodities_history] WHERE commodity='گاز مایع'", db_conn)
 lpg_missing_data = dim_date[dim_date["date"]<="1401-05-02"][["date"]].merge(
     lpg_missing_data, on="date", how="left").ffill(inplace=False)
 
@@ -223,7 +223,7 @@ query_vacuumbottom_bandar = ("SELECT TEMP1.date,TEMP1.vacuumbottom_bandar_new/TE
                              "Quantity) AS float) vacuumbottom_bandar_new FROM "
                              "[nooredenadb].[ime].[ime_data_historical] WHERE GoodsName='وکیوم باتوم' AND "
                              "ProducerName='پالایش نفت بندرعباس' AND Quantity>0 GROUP BY date) AS TEMP1 Left JOIN "
-                             "(SELECT date_jalali as date, price FROM [nooredenadb].[commodity].[commodities_data] "
+                             "(SELECT date_jalali as date, price FROM [nooredenadb].[commodity].[commodities_history] "
                              "where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
 vacuumbottom_bandar = pd.read_sql(query_vacuumbottom_bandar, db_conn)
 vacuumbottom_bandar = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -237,7 +237,7 @@ query_lubecut_bandar = ("SELECT TEMP1.date,TEMP1.lubecut_bandar_new/TEMP2.price 
                         " lubecut_bandar_new FROM [nooredenadb].[ime].[ime_data_historical] WHERE GoodsName IN"
                         " ('لوب کات سبک', 'لوب کات سنگین') AND ProducerName='پالایش نفت بندرعباس' AND Quantity>0 "
                         "GROUP BY date) AS TEMP1 Left JOIN (SELECT date_jalali as date,price FROM [nooredenadb]."
-                        "[commodity].[commodities_data] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date"
+                        "[commodity].[commodities_history] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date"
                         " order by date")
 lubecut_bandar = pd.read_sql(query_lubecut_bandar, db_conn)
 lubecut_bandar = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -308,7 +308,7 @@ query_vacuumbottom_shpna = ("SELECT TEMP1.date,TEMP1.vacuumbottom_shpna_new/TEMP
                             "CAST(SUM(Quantity) AS float) vacuumbottom_shpna_new FROM "
                             "[nooredenadb].[ime].[ime_data_historical] WHERE GoodsName='وکیوم باتوم' AND "
                             "ProducerName='پالایش نفت اصفهان' AND Quantity>0 GROUP BY date) AS TEMP1 Left JOIN "
-                            "(SELECT date_jalali as date, price FROM [nooredenadb].[commodity].[commodities_data] "
+                            "(SELECT date_jalali as date, price FROM [nooredenadb].[commodity].[commodities_history] "
                             "where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
 vacuumbottom_shpna = pd.read_sql(query_vacuumbottom_shpna, db_conn)
 vacuumbottom_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -322,7 +322,7 @@ query_lubecut_shpna = ("SELECT TEMP1.date,TEMP1.lubecut_shpna_new/TEMP2.price lu
                        "float) lubecut_shpna_new FROM [nooredenadb].[ime].[ime_data_historical] WHERE GoodsName "
                        "IN ('لوب کات سبک', 'لوب کات سنگین') AND ProducerName='پالایش نفت اصفهان' AND Quantity>0 "
                        "GROUP BY date) AS TEMP1 Left JOIN (SELECT date_jalali as date,price FROM [nooredenadb]."
-                       "[commodity].[commodities_data] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date "
+                       "[commodity].[commodities_history] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date "
                        "order by date")
 lubecut_shpna = pd.read_sql(query_lubecut_shpna, db_conn)
 lubecut_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -341,7 +341,7 @@ query_isorecycle_shpna = ("SELECT TEMP1.date, TEMP1.isorecycle_shpna_new/TEMP2.p
                           "float) / CAST(SUM(totTradedQuantity) AS float) AS isorecycle_shpna_new FROM "
                           "[nooredenadb].[iee].[iee_data_historical] WHERE supplierName='شركت پالایش نفت اصفهان' AND "
                           "instrumentDisplayName='آیزوریسایکل' AND totTradedQuantity>0 GROUP BY tradeDateShamsi) AS "
-                          "TEMP1 Left JOIN (SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_data]"
+                          "TEMP1 Left JOIN (SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_history]"
                           " where commodity='دلار نیما') TEMP2 ON TEMP1.date=TEMP2.date order by date")
 isorecycle_shpna = pd.read_sql(query_isorecycle_shpna, db_conn)
 isorecycle_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -355,7 +355,7 @@ query_isofeed_shpna = ("SELECT TEMP1.date, TEMP1.isofeed_shpna_new/TEMP2.price A
                           "float) / CAST(SUM(totTradedQuantity) AS float) AS isofeed_shpna_new FROM "
                           "[nooredenadb].[iee].[iee_data_historical] WHERE supplierName='شركت پالایش نفت اصفهان' AND "
                           "instrumentDisplayName='آیزوفید' AND totTradedQuantity>0 GROUP BY tradeDateShamsi) AS "
-                          "TEMP1 Left JOIN (SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_data]"
+                          "TEMP1 Left JOIN (SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_history]"
                           " where commodity='دلار نیما') TEMP2 ON TEMP1.date=TEMP2.date order by date")
 isofeed_shpna = pd.read_sql(query_isofeed_shpna, db_conn)
 isofeed_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -369,7 +369,7 @@ query_solvent_shpna = ("SELECT TEMP1.date, TEMP1.solvent_shpna_new/TEMP2.price A
                        "[nooredenadb].[iee].[iee_data_historical] WHERE supplierName='شركت پالایش نفت اصفهان' AND "
                        "instrumentDisplayName IN ('حلال 402', 'حلال 502', 'حلال 400', 'حلال 406', 'حلال 503', 'حلال 410') "
                        "AND priceUnitTitle='ریال' AND totTradedQuantity>0 GROUP BY tradeDateShamsi) AS TEMP1 Left JOIN "
-                       "(SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_data] where "
+                       "(SELECT date_jalali date, price FROM [nooredenadb].[commodity].[commodities_history] where "
                        "commodity='دلار نیما') TEMP2 ON TEMP1.date=TEMP2.date order by date")
 solvent_shpna = pd.read_sql(query_solvent_shpna, db_conn)
 solvent_shpna = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
@@ -474,7 +474,7 @@ query_pvc_shghadir = ("SELECT TEMP1.date,TEMP1.PVC_shghadir/TEMP2.price PVC_shgh
                       " date,CAST(SUM(TotalPrice) * 1000 AS float)/CAST(SUM(Quantity) AS float) PVC_shghadir FROM "
                       "[nooredenadb].[ime].[ime_data_historical] WHERE ProducerName='پتروشیمی غدیر' AND Quantity > 0 "
                       "GROUP BY date) AS TEMP1 Left JOIN (SELECT date_jalali as date,price FROM [nooredenadb].[commodity]."
-                      "[commodities_data] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
+                      "[commodities_history] where commodity='دلار نیما') AS TEMP2 ON TEMP1.date=TEMP2.date order by date")
 pvc_shghadir = pd.read_sql(query_pvc_shghadir, db_conn)
 pvc_shghadir = dim_date[dim_date["date"]>="1400-01-01"][["date"]].merge(
     pvc_shghadir, on="date", how="left").sort_values(by="date", inplace=False, ignore_index=True).ffill(inplace=False)
@@ -503,7 +503,7 @@ query_products_shgouya = ("SELECT REPLACE(date, '/', '-') AS date, TotalPrice, Q
                           "[nooredenadb].[ime].[ime_data_historical] WHERE "
                           "ProducerName = 'پتروشیمی تندگویان' AND Quantity > 0")
 query_dollar_nima = ("SELECT date_jalali as date, price AS dollar_nima FROM "
-                     "[nooredenadb].[commodity].[commodities_data] where commodity='دلار نیما'")
+                     "[nooredenadb].[commodity].[commodities_history] where commodity='دلار نیما'")
 query_weekends = ("SELECT REPLACE(weekend, '/', '-') AS weekend, REPLACE(date, '/', '-') AS date FROM (SELECT "
                   "MAX(Jalali_1) as weekend, jyear, JWeekNum FROM [nooredenadb].[extra].[dim_date] GROUP BY jyear, "
                   "JWeekNum) AS TEMP1 RIGHT JOIN (SELECT Jalali_1 AS date, jyear, JWeekNum FROM [nooredenadb].[extra]."
@@ -750,9 +750,9 @@ for k in tqdm(range(len(ll))):
     temp_df = chart_df[chart_df["name"] == nn]
     temp_df.drop_duplicates(subset=["date"], keep="first", inplace=True, ignore_index=True)
     cursor = db_conn.cursor()
-    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
+    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE name='{nn}'")
     cursor.close()
-    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]", loading=False)
+    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_history]", loading=False)
 
 ####################################################################################################
 
@@ -762,7 +762,7 @@ commodity_metal = pd.DataFrame(columns=["name", "commodity", "reference"], data=
 metals_df = pd.DataFrame(columns=["date"])
 for c in range(len(commodity_metal)):
     name, commodity, reference = commodity_metal.loc[c]
-    temp = pd.read_sql(f"SELECT date_jalali AS date, price AS [{name}] FROM [nooredenadb].[commodity].[commodities_data]"
+    temp = pd.read_sql(f"SELECT date_jalali AS date, price AS [{name}] FROM [nooredenadb].[commodity].[commodities_history]"
                        f" WHERE commodity='{commodity}' AND reference='{reference}'", db_conn)
     metals_df = metals_df.merge(temp, on="date", how="outer")
 metals_df.sort_values(by="date", inplace=True, ascending=True, ignore_index=True)
@@ -793,9 +793,9 @@ for k in tqdm(range(len(ll))):
     nn = ll[k]
     temp_df = chart_df[chart_df["name"] == nn]
     cursor = db_conn.cursor()
-    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{nn}'")
+    cursor.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE name='{nn}'")
     cursor.close()
-    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+    insert_to_database(dataframe=temp_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ####################################################################################################
 ####################################################################################################
@@ -940,20 +940,20 @@ chart_df["unit"] = ["-"] * len(chart_df)
 names = chart_df["name"].unique().tolist()
 for n in tqdm(range(len(names))):
     cursor_ = db_conn.cursor()
-    cursor_.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE name='{names[n]}'")
+    cursor_.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE name='{names[n]}'")
     cursor_.close()
 
-insert_to_database(dataframe=chart_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=chart_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ####################################################################################################
 
-sugar = pd.read_sql("SELECT date, date_jalali, price as sugar FROM [nooredenadb].[commodity].[commodities_data] "
+sugar = pd.read_sql("SELECT date, date_jalali, price as sugar FROM [nooredenadb].[commodity].[commodities_history] "
                     "where commodity='شکر تضمینی' AND unit='ریال بر تن'", db_conn)
-wheat = pd.read_sql("SELECT date, date_jalali, price as wheat FROM [nooredenadb].[commodity].[commodities_data] "
+wheat = pd.read_sql("SELECT date, date_jalali, price as wheat FROM [nooredenadb].[commodity].[commodities_history] "
                     "where commodity='گندم تضمینی'", db_conn)
-beet = pd.read_sql("SELECT date, date_jalali, price as beet FROM [nooredenadb].[commodity].[commodities_data] "
+beet = pd.read_sql("SELECT date, date_jalali, price as beet FROM [nooredenadb].[commodity].[commodities_history] "
                    "where commodity='چغندر تضمینی'", db_conn)
-dollar = pd.read_sql("SELECT date, date_jalali, price as dollar FROM [nooredenadb].[commodity].[commodities_data] "
+dollar = pd.read_sql("SELECT date, date_jalali, price as dollar FROM [nooredenadb].[commodity].[commodities_history] "
                      "WHERE name='دلار نیما - tgju.org (ریال بر دلار)'", db_conn)
 
 sugar_dollar = dollar.merge(sugar, on=["date", "date_jalali"], how="outer").sort_values(
@@ -969,9 +969,9 @@ sugar_dollar[["owner", "commodity", "unit", "reference"]] = ["pirnajafi", "شک�
 sugar_dollar["name"] = sugar_dollar["commodity"] + " - " + sugar_dollar["reference"] + " (" + sugar_dollar["unit"] + ")"
 
 crsr = db_conn.cursor()
-crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='شکر تضمینی' AND unit='دلار بر تن'")
+crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity='شکر تضمینی' AND unit='دلار بر تن'")
 crsr.close()
-insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 # sugar_beet = sugar.merge(beet, on=["date", "date_jalali"], how="outer")
 # sugar_beet["price"] = sugar_beet["sugar"] / sugar_beet["beet"]
@@ -979,9 +979,9 @@ insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commod
 # sugar_beet[["owner", "commodity", "unit", "reference"]] = ["pirnajafi", "نسبت شکر به چغندر تضمینی", "-", "کارشناس"]
 # sugar_beet["name"] = sugar_beet["commodity"]
 # crsr = db_conn.cursor()
-# crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نسبت شکر به چغندر تضمینی'")
+# crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity='نسبت شکر به چغندر تضمینی'")
 # crsr.close()
-# insert_to_database(dataframe=sugar_beet, database_table="[nooredenadb].[commodity].[commodities_data]")
+# insert_to_database(dataframe=sugar_beet, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 # beet_wheat = beet.merge(wheat, on=["date", "date_jalali"], how="outer")
 # beet_wheat["price"] = beet_wheat["beet"] / beet_wheat["wheat"]
@@ -989,16 +989,16 @@ insert_to_database(dataframe=sugar_dollar, database_table="[nooredenadb].[commod
 # beet_wheat[["owner", "commodity", "unit", "reference"]] = ["pirnajafi", "نسبت چغندر به گندم تضمینی", "-", "کارشناس"]
 # beet_wheat["name"] = beet_wheat["commodity"]
 # crsr = db_conn.cursor()
-# crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity='نسبت چغندر به گندم تضمینی'")
+# crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity='نسبت چغندر به گندم تضمینی'")
 # crsr.close()
-# insert_to_database(dataframe=beet_wheat, database_table="[nooredenadb].[commodity].[commodities_data]")
+# insert_to_database(dataframe=beet_wheat, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ####################################################################################################
 
 commodities = ["کرک نوری جدید", "کرک شبندر جدید"]
 table = pd.DataFrame()
 for i in range(len(commodities)):
-    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] where "
+    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_history] where "
                      f"commodity='{commodities[i]}' ORDER BY [date]", db_conn)
     tmp = pd.DataFrame(data={
         "name": [df["commodity"].iloc[0]],

@@ -40,10 +40,10 @@ gas[["owner", "commodity", "unit", "reference"]] = ["razmehgir", "گاز خور�
 gas["name"] = gas["commodity"] + " - " + gas["reference"] + " (" + gas["unit"] + ")"
 
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE owner='razmehgir' AND "
+crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE owner='razmehgir' AND "
              "commodity='گاز خوراک' AND unit='دلار بر مترمکعب' AND reference='وزارت نفت'")
 crsr.close()
-insert_to_database(dataframe=gas, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=gas, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
@@ -69,9 +69,9 @@ banks_data["price"] *= 100
 banks_data["name"] = banks_data["commodity"] + " - " + banks_data["reference"] + " (" + banks_data["unit"] + ")"
 
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity IN ('اسپرد عملیات اصلی', 'نرخ موثر درآمد تسهیلات', 'هزینه موثر سپرده')")
+crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity IN ('اسپرد عملیات اصلی', 'نرخ موثر درآمد تسهیلات', 'هزینه موثر سپرده')")
 crsr.close()
-insert_to_database(dataframe=banks_data, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=banks_data, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
@@ -81,16 +81,16 @@ amar_center_data["name"] = (amar_center_data["commodity"] + " - " + amar_center_
                             amar_center_data["unit"] + ")")
 
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE owner='jahanshahi'")
+crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE owner='jahanshahi'")
 crsr.close()
-insert_to_database(dataframe=amar_center_data, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=amar_center_data, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
 enigma_agent = enigma.EnigmaAgent(username=authenticator[0]["username"], password=authenticator[0]["password"])
 enigma_agent.login()
 
-cmdt_raw = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_data]", db_conn)
+cmdt_raw = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail]", db_conn)
 cmdt = cmdt_raw[cmdt_raw["id"] != "-"]
 temporary_df = pd.DataFrame()
 for i in tqdm(range(len(cmdt))):
@@ -181,7 +181,7 @@ complete_df = complete_df.merge(
                     ), on="date", how="left").sort_values(by="date", inplace=False, ignore_index=True)
 complete_df["price"] = complete_df["price"].astype(dtype="float")
 
-max_dates = pd.read_sql("SELECT MAX(date) AS maxdate, [name] FROM [nooredenadb].[commodity].[commodities_data] "
+max_dates = pd.read_sql("SELECT MAX(date) AS maxdate, [name] FROM [nooredenadb].[commodity].[commodities_history] "
                         "GROUP BY [name]", db_conn)
 complete_df = complete_df.merge(max_dates, on="name", how="left")
 complete_df["maxdate"].fillna("0", inplace=True)
@@ -189,7 +189,7 @@ complete_df["maxdate"].fillna("0", inplace=True)
 complete_df = complete_df[complete_df["date"] > complete_df["maxdate"]].drop(
     columns="maxdate", inplace=False).reset_index(drop=True, inplace=False)
 if len(complete_df) > 0:
-    insert_to_database(dataframe=complete_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+    insert_to_database(dataframe=complete_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 ####################################################################################################################
 
@@ -238,9 +238,9 @@ for i in range(len(oil_price_dataframe_mindate)):
     query_oilprice += (f"(name='{oil_price_dataframe_mindate["name"].iloc[i]}' AND "
                        f"date>='{oil_price_dataframe_mindate["date"].iloc[i]}') OR ")
 crsr = db_conn.cursor()
-crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE " + query_oilprice[: -4])
+crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE " + query_oilprice[: -4])
 crsr.close()
-insert_to_database(dataframe=oil_price_dataframe, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=oil_price_dataframe, database_table="[nooredenadb].[commodity].[commodities_history]")
 print("Done!")
 
 ####################################################################################################################
@@ -267,11 +267,11 @@ data[["owner", "unit", "reference"]] = ["maleklou", "دلار بر تن", "isfs.
 data["name"] = data["commodity"] + " - " + data["reference"] + " (" + data["unit"] + ")"
 
 crsr = db_conn.cursor()
-crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE commodity "
+crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE commodity "
              f"IN ('شکر خام نيويورک', 'شکر سفيد لندن') AND owner='maleklou' AND "
              f"reference='isfs.ir' AND date>='{data['date'].min()}'")
 crsr.close()
-insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_data]")
+insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_history]")
 print("Done!")
 
 ####################################################################################################################
@@ -280,7 +280,7 @@ commodities = ["اوره خلیج فارس - investing.com (دلار بر تن)"
                "بیلت - متال بولتن (دلار بر تن)", "متانول پلتس - چین پلتس (دلار بر تن)"]
 table = pd.DataFrame()
 for i in range(len(commodities)):
-    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_data] "
+    df = pd.read_sql(f"SELECT [date], [price], [commodity] FROM [nooredenadb].[commodity].[commodities_history] "
                      f"where name='{commodities[i]}' ORDER BY [date]",
                      db_conn)
     tmp = pd.DataFrame(data={
@@ -304,7 +304,7 @@ for i in range(len(table)):
 
 response = rq.get("https://itpnews.com/persian/")
 # php_session_id = response.headers["set-cookie"].split(";")[0]
-itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_itpnews_detail_data]", db_conn)
+itp_commodities = pd.read_sql("SELECT * FROM [nooredenadb].[commodity].[commodities_detail_itpnews]", db_conn)
 
 from_d = (jdatetime.datetime.today() - jdatetime.timedelta(days=10)).strftime("%Y/%m/%d")
 to_d = jdatetime.datetime.today().strftime("%Y/%m/%d")
@@ -342,10 +342,10 @@ cmdty_df.drop_duplicates(subset=["commodity", "date"], keep="first", ignore_inde
 
 try:
     crsr = db_conn.cursor()
-    crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
+    crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
                  f"date_jalali>='{from_d.replace('/', '-')}' AND reference='itpnews'")
     crsr.close()
-    insert_to_database(dataframe=cmdty_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+    insert_to_database(dataframe=cmdty_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 except Exception as e:
     print(e)
 
@@ -365,10 +365,10 @@ data = data[data["date_jalali"] >= from_d].reset_index(drop=True, inplace=False)
 
 if len(data) > 0:
     crsr = db_conn.cursor()
-    crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
+    crsr.execute(f"DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
                  f"date_jalali >='{from_d}' AND commodity='گندم / بازار آمریکا'")
     crsr.close()
-    insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_data]")
+    insert_to_database(dataframe=data, database_table="[nooredenadb].[commodity].[commodities_history]")
 
 #######################################################################################################################
 
@@ -405,12 +405,12 @@ if len(data) > 0:
 # wci_df[["owner", "unit", "reference"]] = ["shayan", "دلار بر کانتینر", "macromicro.me"]
 # wci_df["name"] = wci_df["commodity"] + " - " + wci_df["reference"] + " (" + wci_df["unit"] + ")"
 #
-# wci_last_date = pd.read_sql("SELECT MAX(date) as date FROM [nooredenadb].[commodity].[commodities_data] WHERE "
+# wci_last_date = pd.read_sql("SELECT MAX(date) as date FROM [nooredenadb].[commodity].[commodities_history] WHERE "
 #                             "owner='shayan' AND unit='دلار بر کانتینر' AND reference='macromicro.me'",
 #                             db_conn)["date"].iloc[0]
 # wci_df = wci_df[wci_df["date"] > wci_last_date].reset_index(drop=True, inplace=False)
 # if len(wci_df) > 0:
-#     insert_to_database(dataframe=wci_df, database_table="[nooredenadb].[commodity].[commodities_data]")
+#     insert_to_database(dataframe=wci_df, database_table="[nooredenadb].[commodity].[commodities_history]")
 #
 # p = sync_playwright().start()
 # browser = p.chromium.launch(headless=True)
@@ -454,7 +454,7 @@ if len(data) > 0:
 # df_["name"] = df_["commodity"] + " - " + df_["reference"] + " (" + df_["unit"] + ")"
 #
 # crsr = db_conn.cursor()
-# crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_data] WHERE "
+# crsr.execute("DELETE FROM [nooredenadb].[commodity].[commodities_history] WHERE "
 #              "owner='shayan' AND unit='دلار بر کانتینر' AND reference='macromicro.me'")
 # crsr.close()
-# insert_to_database(dataframe=df_, database_table="[nooredenadb].[commodity].[commodities_data]")
+# insert_to_database(dataframe=df_, database_table="[nooredenadb].[commodity].[commodities_history]")
