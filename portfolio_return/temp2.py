@@ -1,6 +1,7 @@
 import warnings
 import pandas as pd
 from pyodbc import Connection
+from pandas.core.frame import DataFrame
 
 from utils.database import make_connection
 from portfolio_return.credit.credit_history import get_credits_history
@@ -32,6 +33,15 @@ def get_dim_date(start_date: str, end_date: str, timeframe: str, db_connection: 
     dim_date = pd.read_sql(q_, db_connection)
 
     return dim_date
+
+
+def get_cashflow(db_connection: Connection) -> DataFrame:
+    cashflow = pd.read_sql(
+        "SELECT date, SUM (debtor) debtor FROM [nooredenadb].[company].[cashflow] "
+        "WHERE source = 'ارتباطات سیار' AND description not like '%افزایش سرمایه%' GROUP BY date",
+        db_connection
+    )
+    return cashflow
 
 
 def get_portfolio(start_date: str, end_date: str, timeframe: str, db_connection: Connection) -> pd.DataFrame:
@@ -105,56 +115,41 @@ def get_dividend(start_date: str, end_date: str, timeframe: str, db_connection: 
 
 
 
-warnings.filterwarnings("ignore")
-
-db_conn = make_connection()
-
-timeframe = "weekly"
-start_date = "1404/10/30"
-end_date = "1405/04/31"
+# warnings.filterwarnings("ignore")
+# db_conn = make_connection()
 
 
-credits_history = get_credits_history(start_date=start_date, end_date=end_date, db_connection=db_conn)
+def get_portfolio_return(
+        start_date: str,
+        end_date: str,
+        timeframe: str,
+        db_connection: Connection
+) -> pd.DataFrame:
+
+    timeframe = "daily"
+    start_date = "1390/01/01"
+    end_date = "1405/07/30"
+    db_connection = make_connection()
+    warnings.filterwarnings("ignore")
+
+    cashflow = get_cashflow(db_connection=db_connection)
+    portfolio_df = get_portfolio(start_date, end_date, timeframe, db_connection)
+    profitloss_df = get_profitloss(start_date, end_date, timeframe, db_connection)
+    dividend_df = get_dividend(start_date, end_date, timeframe, db_connection)
 
 
-portfolio_df = get_portfolio(start_date, end_date, timeframe, db_conn)
-profitloss_df = get_profitloss(start_date, end_date, timeframe, db_conn)
-dividend_df = get_dividend(start_date, end_date, timeframe, db_conn)
+    df = portfolio_df.merge(profitloss_df, how="outer", on="date").merge(dividend_df, how="outer", on="date")
+    df = df.merge(cashflow, on="date", how="outer")
 
+    df.fillna(0, inplace=True)
+    # df["surplus"] = df["value"] - df["total_cost"] + df["dividend"] + df["net_profit"]
+    # df["surplus_yesterday"] = df["value"].shift(1) - df["total_cost"].shift(1)
+    df["return"] = ((df["value"] - df["total_cost"] + df["dividend"] + df["net_profit"]) -
+                    (df["value"].shift(1) - df["total_cost"].shift(1))) / df["value"].shift(1)
+    df["return"] += 1
 
-df = portfolio_df.merge(profitloss_df, how="outer", on="date").merge(dividend_df, how="outer", on="date")
-df.fillna(0, inplace=True)
-df["surplus"] = df["value"] - df["total_cost"] + df["dividend"] + df["net_profit"]
-
-df["surplus_yesterday"] = df["value"].shift(1) - df["total_cost"].shift(1)
-
-df["return"] = (df["surplus"] - df["surplus_yesterday"]) / df["value"].shift(1)
-df.dropna(subset=["return"], inplace=True)
-
-(df["return"] + 1).prod()
-
-df.to_excel("c:/users/h.damavandi/desktop/df.xlsx", index=False)
-
-
-"""
-
-1405/06/31
-===============
-daily: 54.74 %
-weekly: 54.60 %
-monthly: 53.84 %
-
-
-1405/04/31
-===============
-
-daily: 12.37 %
-weekly: 12.32 %
-monthly: 11.90 %
-
-
-
-"""
-
-
+    df.dropna(subset=["return"], inplace=True)
+    df['cum_return_forward'] = df['return'].iloc[::-1].cumprod().iloc[::-1]
+    df['debtor_times_cum_return'] = (df['debtor'] * df['cum_return_forward']).round(0)
+    df.to_excel("c:/users/h.damavandi/desktop/df.xlsx", index=False)
 
