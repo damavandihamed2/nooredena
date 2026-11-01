@@ -229,7 +229,7 @@ class Agent:
             'Referer': url
         }
         response = rq.get(url=url, data=payload, headers=headers)
-        data = report_data_parser(url=f"{url}?{payload}", response=response, report_type="dividend")
+        data = report_data_parser(url=url, response=response, report_type="dividend")
         return data
 
 
