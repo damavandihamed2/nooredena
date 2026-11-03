@@ -1,5 +1,7 @@
 import requests as rq
 
+
+
 headers = {
     'accept': 'application/json, text/plain, */*',
     'accept-language': 'en-US,en;q=0.9',
@@ -19,13 +21,10 @@ headers = {
 }
 
 
-
-
 def get_fund_types() -> list[dict]:
     response = rq.get('https://fipiran.com/services/fund/fundtype', headers=headers)
     fund_types = response.json()["items"]
     return fund_types
-
 
 
 def get_funds_all():
@@ -51,7 +50,6 @@ def get_funds_all():
     return all_funds
 
 
-
 def get_fund(reg_number: str, group_id: int) -> dict | None:
 
     params = {
@@ -68,5 +66,5 @@ def get_fund(reg_number: str, group_id: int) -> dict | None:
     wa = fund.get("websiteAddress")[0] if len(fund.get("websiteAddress")) != 0 else ""
     fund.update({"websiteAddress": wa})
     fund.pop("mutualFundLicenses")
-    return fund
 
+    return fund
