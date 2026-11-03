@@ -37,7 +37,8 @@ def insert_to_database(
         database_table: str,
         db_connection: Optional[pyodbc.Connection] = None,
         loading: bool = True,
-        batch_size: int = 1000
+        batch_size: int = 1000,
+        fast: bool = True
 ) -> None:
 
     should_close = False
@@ -47,7 +48,7 @@ def insert_to_database(
 
 
     cursor = db_connection.cursor()
-    cursor.fast_executemany = True
+    cursor.fast_executemany = fast
 
     cols = ", ".join(dataframe.columns.tolist())
     placeholders = ", ".join("?" * len(dataframe.columns))
