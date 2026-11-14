@@ -88,7 +88,7 @@ omex_portfolio = pd.read_sql("SELECT * FROM [nooredenadb].[brokers].[option_port
 omex_portfolio.drop(labels=["principalId", "lVal30", "baseInstrumentId", "csDate", "psDate", "remainCsDateDays",
                             "versionId","totalSellRevenue", "blockedStrategyQuantity", "remainingStrategyQuantity",
                             "initialMargin", "requiredMargin", "maintenanceMargin", "maxCOP", "strikePrice",
-                            "optionSide"], axis=1, inplace=True)
+                            "optionSide", "optionContractDelta"], axis=1, inplace=True)
 omex_portfolio.rename({"instrumentName": "symbol", "instrumentId": "symbol_code", "orderSide": "type", "strikePrice": "strike_price",
                        "count": "volume", "cSize": "contract_size", "eDate": "due_date", "executedPrice": "mean_price",
                        "breakEvenPrice": "break_even_price", "blockedAmount": "margin_value"}, axis=1, inplace=True)
