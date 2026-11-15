@@ -65,16 +65,17 @@ def get_credits_history(
     )
 
     df_result['remaining'] = df_result.groupby(by=["portfolio_id", 'broker_id'])['remaining'].ffill().fillna(0)
-    df_result["remaining"] = ((df_result["remaining"] < 0) * 1) * df_result["remaining"]
 
-    df_result = df_result.groupby(by=["date", "portfolio_id"], as_index=False)['remaining'].sum()
+    df_result["cash"] = ((df_result["remaining"] >= 0) * 1) * df_result["remaining"]
+    df_result["credit"] = ((df_result["remaining"] < 0) * 1) * df_result["remaining"]
+
+    df_result = df_result.groupby(by=["date", "portfolio_id"], as_index=False)[["cash", "credit"]].sum()
     df_result = df_result[(df_result["date"] >= start_date) & (df_result["date"] <= end_date)]
     df_result = df_result.sort_values(by=["date", "portfolio_id"], inplace=False, ignore_index=True)
-    df_result.rename(columns={"remaining": "credit"}, inplace=True)
 
     if portfolio_ids_list:
         df_result = df_result[df_result["portfolio_id"].isin(portfolio_ids_list)]
 
-    df_result = df_result.groupby(by=["date"], as_index=False)["credit"].sum()
+    df_result = df_result.groupby(by=["date"], as_index=False)[["cash", "credit"]].sum()
 
     return df_result
