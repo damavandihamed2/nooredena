@@ -1,6 +1,6 @@
 ##################################################
 tsetmc = "https://cdn.tsetmc.com/api"
-old_setmc = "https://old.tsetmc.com"
+old_tsetmc = "https://old.tsetmc.com"
 ##################################################
 url_static_data = f"{tsetmc}/StaticData/GetStaticData"
 payload_static_data = {}
@@ -24,7 +24,7 @@ url_sector_detail = f"{tsetmc}/MarketData/GetSectorTop/9999"
 payload_sector_detail = {}
 headers_sector_detail = headers_static_data.copy()
 ##################################################
-url_main_page = f"{old_setmc}/Loader.aspx?ParTree=15"
+url_main_page = f"{old_tsetmc}/Loader.aspx?ParTree=15"
 payload_main_page = {}
 headers_main_page = {
     "Accept-Encoding": "gzip, deflate", "Accept-Language": "en-US,en;q=0.9", "Cache-Control": "no-cache",
@@ -48,7 +48,7 @@ url_market2_data = f"{tsetmc}/MarketData/GetMarketOverview/2"
 payload_market2_data = {}
 headers_market2_data = headers_market1_data.copy()
 ##################################################
-url_marketwatch = f"{old_setmc}/tsev2/data/MarketWatchInit.aspx?h=0&r=0"
+url_marketwatch = f"{old_tsetmc}/tsev2/data/MarketWatchInit.aspx?h=0&r=0"
 payload_marketwatch = {}
 headers_marketwatch = {
     "Accept": "text/html, */*; q=0.01", "Accept-Encoding": "gzip, deflate", "Accept-Language": "en-US,en;q=0.9",
@@ -57,7 +57,7 @@ headers_marketwatch = {
     "X-Requested-With": "XMLHttpRequest"
 }
 ##################################################
-url_clienttype = f"{old_setmc}/tsev2/data/ClientTypeAll.aspx"
+url_clienttype = f"{old_tsetmc}/tsev2/data/ClientTypeAll.aspx"
 payload_clienttype = {}
 headers_clienttype = {
     "Accept": "text/plain, */*; q=0.01", "Accept-Encoding": "gzip, deflate", "Accept-Language": "en-US,en;q=0.9",
