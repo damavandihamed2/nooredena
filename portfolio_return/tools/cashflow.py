@@ -36,7 +36,7 @@ def get_broker_cashflow(broker_type: str, db_connection: Connection) -> pd.DataF
     return cashflow
 
 
-def get_cashflow(start_date: str, end_date: str, db_connection: Connection) -> pd.DataFrame:
+def get_cashflow(start_date: str, end_date: str, timeframe: str, db_connection: Connection) -> pd.DataFrame:
 
     rayan_cashflow = get_broker_cashflow(broker_type="rayan", db_connection=db_connection)
     tadbir_cashflow = get_broker_cashflow(broker_type="tadbir", db_connection=db_connection)
