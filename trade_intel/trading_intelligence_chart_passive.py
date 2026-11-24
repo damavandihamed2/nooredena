@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 db_conn = make_connection()
 
 start_dates = "1404/10/30"
-dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence]", db_conn)
+dataframe = pd.read_sql("SELECT * FROM [nooredenadb].[extra].[trading_inteligence] ORDER BY date", db_conn)
 df = dataframe[dataframe["start_date"] == start_dates]
 
 df.drop(["inactivity_return", "value_diff_inactivity"], axis=1, inplace=True)
@@ -237,8 +237,8 @@ fig.add_trace(fig_indicator, row=2, col=2)
 
 fig.update_xaxes(tickfont=dict(family="B Nazanin", size=18), calendar="jalali", tickformat="%Y/%m/%d", showgrid=False, tickangle=45)
 
-range1 = [-20, 100]
-range2 = [-1000, 4800]
+range1 = [-20, 110]
+range2 = [-350, 2000]
 fig.update_yaxes(tickfont=dict(family="B Nazanin", size=18), exponentformat="none", separatethousands=True,
                  tickprefix=" ", ticksuffix="% ", showgrid=False, zeroline=True, zerolinewidth=4, secondary_y=False,
                  range=range1)
