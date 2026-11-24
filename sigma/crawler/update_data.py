@@ -149,9 +149,25 @@ if __name__ == "__main__":
         )
         sigma_agent.login()
 
-        update_buysell_data(agent=sigma_agent, portfolio_ids_list=[1, 25], db_connection=db_conn)
-        update_profitloss_data(agent=sigma_agent, portfolio_ids_list=[1, 25], db_connection=db_conn)
-        update_portfolio_data(agent=sigma_agent, portfolio_ids_list=[1, 25], db_connection=db_conn)
-        update_dividend_data(agent=sigma_agent, portfolio_ids_list=[1, 25], db_connection=db_conn)
+        update_buysell_data(
+            agent=sigma_agent,
+            portfolio_ids_list=[1, 25],
+            db_connection=db_conn
+        )
+        update_profitloss_data(
+            agent=sigma_agent,
+            portfolio_ids_list=[1, 25],
+            db_connection=db_conn
+        )
+        update_portfolio_data(
+            agent=sigma_agent,
+            portfolio_ids_list=[1, 25],
+            db_connection=db_conn
+        )
+        update_dividend_data(
+            agent=sigma_agent,
+            portfolio_ids_list=[1, 25],
+            db_connection=db_conn
+        )
 
 
